@@ -869,11 +869,64 @@ Future<File> downloadStrukPdf(int penjualanId, String token) async {
 
 | Versi / Tanggal | Modul | Perubahan |
 | :--- | :--- | :--- |
+| **27 Sep 2026** | **Pemesanan Publik & Cek Pesanan** | Penambahan halaman pemesanan umum (`/pesan` & `/order`), API public (`/api/public/produk`, `/api/public/cek-stok`, `/api/public/pesanan`), tab Cek Pesanan di dashboard admin, pemotongan stok otomatis saat pesanan masuk, dan pengembalian stok otomatis saat pesanan dibatalkan. |
 | **24 Sep 2026** | **Web Dashboard** | Hak akses role `kasir` dibatasi hanya melihat tab **Kasir POS**. Tab Navigasi Dasbor, Master Data, Belanja, dan Laporan disembunyikan. |
 | **24 Sep 2026** | **API Supplier** | Endpoint `GET /api/supplier` & `GET /api/supplier/{id}` dipindahkan dari grup kasir ke **Hanya Pemilik** (`role:pemilik`). |
 | **24 Sep 2026** | **API Profil & Toko** | Penambahan endpoint `PUT /api/profile` (telepon, alamat, password) dan `GET|PUT /api/pengaturan` (pengaturan toko). |
 | **24 Sep 2026** | **API User** | Penambahan endpoint CRUD `/api/users` khusus pemilik untuk manajemen akun kasir. |
 | **24 Sep 2026** | **API Barang** | Penambahan endpoint `DELETE /api/barang/{id}/gambar` untuk menghapus foto produk saja. |
+
+---
+
+## 8. Modul Pemesanan Online (Publik & Admin)
+
+### 1. Ambil Katalog Produk Publik (Tanpa Login)
+`GET /api/public/produk`
+
+**Query Parameters:**
+- `search` (opsional): cari nama, SKU, atau kategori.
+- `kategori_id` (opsional): filter kategori produk.
+- `sort_by` (opsional): `nama_barang`, `harga_termurah`, `harga_termahal`, `stok_terbanyak`.
+- `all` (opsional, boolean): jika `1` mengembalikan semua list tanpa paginate.
+
+### 2. Cek Ketersediaan Stok Realtime
+`POST /api/public/cek-stok`
+
+**Request Body:**
+```json
+{
+  "barang_id": 1,
+  "jumlah": 3
+}
+```
+
+### 3. Kirim Pesanan Baru (Publik)
+`POST /api/public/pesanan`
+
+> *Catatan:* Stok produk **otomatis berkurang** seketika setelah pesanan divalidasi.
+
+**Request Body:**
+```json
+{
+  "nama_pemesan": "Ibu Siti Nurhaliza",
+  "no_telepon": "081234567890",
+  "alamat": "Jl. Melati No. 45",
+  "catatan": "Tolong kirim sebelum jam 17:00",
+  "items": [
+    {
+      "barang_id": 1,
+      "jumlah": 2
+    }
+  ]
+}
+```
+
+### 4. Kelola Pesanan di Admin / Kasir (Sanctum Auth)
+- `GET /api/pesanan` : Mengambil daftar pesanan beserta ringkasan status (`menunggu`, `diproses`, `selesai`, `dibatalkan`).
+- `GET /api/pesanan/{id}` : Mengambil rincian pesanan dan barang yang dipesan.
+- `PUT /api/pesanan/{id}/status` : Memperbarui status pesanan (`status`: `menunggu|diproses|selesai|dibatalkan`, `catatan_admin`).
+  > **Fitur Pembatalan:** Jika status diubah menjadi `dibatalkan`, sistem **secara otomatis mengembalikan / menambahkan kembali stok** semua barang dalam pesanan tersebut.
+- `DELETE /api/pesanan/{id}` : Menghapus data pesanan (stok dikembalikan jika status sebelumnya belum dibatalkan).
 
 ---
 

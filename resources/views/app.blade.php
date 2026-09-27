@@ -1306,6 +1306,10 @@
                 <button id="nav-btn-dasbor" class="nav-btn active" onclick="switchTab('dasbor')">
                     <i class="fa-solid fa-chart-pie"></i> Dasbor
                 </button>
+                <button id="nav-btn-pesanan" class="nav-btn" onclick="switchTab('pesanan')">
+                    <i class="fa-solid fa-bell-concierge"></i> Pesanan Online
+                    <span id="badge-pesanan-menunggu" style="display:none; background:#ef4444; color:white; font-size:10px; font-weight:800; padding:1px 6px; border-radius:999px; margin-left:4px;">0</span>
+                </button>
                 <button id="nav-btn-pos" class="nav-btn" onclick="switchTab('pos')">
                     <i class="fa-solid fa-cash-register"></i> Kasir POS
                 </button>
@@ -1321,6 +1325,9 @@
                 <button id="nav-btn-pengaturan" class="nav-btn" onclick="switchTab('pengaturan')">
                     <i class="fa-solid fa-gear"></i> Pengaturan
                 </button>
+                <a href="/pesan" target="_blank" class="nav-btn" style="color: #059669; background: #ecfdf5; border: 1px solid #10b981;" title="Buka Halaman Pemesanan Publik (Pelanggan)">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Web Pemesanan
+                </a>
             </nav>
 
             <!-- Current User Role & Switcher -->
@@ -2024,6 +2031,111 @@
             </div>
         </section>
 
+        <!-- ========================================== -->
+        <!-- TAB 7: MANAJEMEN PESANAN ONLINE PELANGGAN  -->
+        <!-- ========================================== -->
+        <section id="tab-pesanan" class="tab-panel">
+            <!-- Metrics & Filter Summary -->
+            <div class="grid-metrics" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 20px;">
+                <div class="metric-card amber" onclick="filterPesananStatus('menunggu')" style="cursor: pointer;">
+                    <div class="metric-info">
+                        <h4>Menunggu Konfirmasi</h4>
+                        <div class="value" id="val-pesanan-menunggu">0</div>
+                        <small style="color: var(--text-muted); font-size: 12px;">Perlu segera dicek</small>
+                    </div>
+                    <div class="metric-icon">
+                        <i class="fa-solid fa-clock"></i>
+                    </div>
+                </div>
+
+                <div class="metric-card blue" onclick="filterPesananStatus('diproses')" style="cursor: pointer;">
+                    <div class="metric-info">
+                        <h4>Sedang Diproses</h4>
+                        <div class="value" id="val-pesanan-diproses">0</div>
+                        <small style="color: var(--text-muted); font-size: 12px;">Disiapkan/Diantar</small>
+                    </div>
+                    <div class="metric-icon">
+                        <i class="fa-solid fa-boxes-packing"></i>
+                    </div>
+                </div>
+
+                <div class="metric-card green" onclick="filterPesananStatus('selesai')" style="cursor: pointer;">
+                    <div class="metric-info">
+                        <h4>Pesanan Selesai</h4>
+                        <div class="value" id="val-pesanan-selesai">0</div>
+                        <small style="color: var(--text-muted); font-size: 12px;">Transaksi Berhasil</small>
+                    </div>
+                    <div class="metric-icon">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                </div>
+
+                <div class="metric-card red" onclick="filterPesananStatus('dibatalkan')" style="cursor: pointer;">
+                    <div class="metric-info">
+                        <h4>Pesanan Dibatalkan</h4>
+                        <div class="value" id="val-pesanan-dibatalkan">0</div>
+                        <small style="color: var(--text-muted); font-size: 12px;">Stok otomatis kembali</small>
+                    </div>
+                    <div class="metric-icon">
+                        <i class="fa-solid fa-circle-xmark"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Orders Table Card -->
+            <div class="table-card">
+                <div class="table-header" style="flex-wrap: wrap; gap: 14px;">
+                    <div>
+                        <h3 style="font-size: 17px; font-weight: 800;">
+                            <i class="fa-solid fa-bell-concierge" style="color: var(--primary);"></i> Cek Pesanan Masuk (Online)
+                        </h3>
+                        <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                            Kelola pesanan dari halaman publik. Stok produk otomatis dipotong saat dipesan dan bertambah kembali bila dibatalkan.
+                        </p>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <div style="position: relative;">
+                            <input type="text" id="search-pesanan-input" class="form-control" placeholder="Cari pemesan / no order..." style="width: 220px; padding-left: 32px;" oninput="filterPesananList()">
+                            <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 13px;"></i>
+                        </div>
+
+                        <select id="filter-pesanan-status-select" class="form-control" style="width: 170px;" onchange="filterPesananStatus(this.value)">
+                            <option value="semua">Semua Status</option>
+                            <option value="menunggu">Menunggu Konfirmasi</option>
+                            <option value="diproses">Sedang Diproses</option>
+                            <option value="selesai">Selesai</option>
+                            <option value="dibatalkan">Dibatalkan</option>
+                        </select>
+
+                        <button class="btn-sm-action" onclick="loadPesananTab()" title="Muat ulang data pesanan">
+                            <i class="fa-solid fa-arrows-rotate"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <div style="overflow-x: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>No. Pesanan</th>
+                                <th>Waktu Pesan</th>
+                                <th>Nama Pemesan</th>
+                                <th>Kontak / Alamat</th>
+                                <th>Item Dipesan</th>
+                                <th>Total Belanja</th>
+                                <th>Status Pesanan</th>
+                                <th style="text-align: center;">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pesanan-tbody">
+                            <!-- Loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <!-- ========================================== -->
@@ -2275,6 +2387,118 @@
         </div>
     </div>
 
+    <!-- ========================================== -->
+    <!-- MODAL 5: DETAIL PESANAN ONLINE             -->
+    <!-- ========================================== -->
+    <div id="modal-detail-pesanan" class="modal-overlay">
+        <div class="modal-box" style="max-width: 680px;">
+            <div class="modal-header">
+                <div>
+                    <h3 style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-receipt" style="color: var(--primary);"></i>
+                        <span>Detail Pesanan <strong id="modal-pesanan-no">-</strong></span>
+                    </h3>
+                    <div id="modal-pesanan-status-wrap" style="margin-top: 4px;"></div>
+                </div>
+                <button class="modal-close" onclick="closeModal('modal-detail-pesanan')">&times;</button>
+            </div>
+            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                <!-- Info Pemesan -->
+                <div style="background: #f8fafc; border: 1px solid var(--light-border); border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 13px;">
+                        <div>
+                            <span style="color: var(--text-muted); display: block; font-size: 11px;">Nama Pemesan:</span>
+                            <strong id="modal-pesanan-nama" style="font-size: 14px;">-</strong>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-muted); display: block; font-size: 11px;">No. WhatsApp / HP:</span>
+                            <span id="modal-pesanan-telepon">-</span>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-muted); display: block; font-size: 11px;">Waktu Pemesanan:</span>
+                            <span id="modal-pesanan-waktu">-</span>
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            <span style="color: var(--text-muted); display: block; font-size: 11px;">Alamat / Catatan Pengiriman:</span>
+                            <p id="modal-pesanan-alamat" style="margin-top: 2px; color: var(--text-main);">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Banner Informasi Pengembalian Stok (Jika Dibatalkan) -->
+                <div id="modal-pesanan-banner-batal" style="display: none; background: #fee2e2; border-left: 4px solid #ef4444; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; font-size: 12.5px; color: #991b1b;">
+                    <i class="fa-solid fa-circle-info"></i> <strong>Pesanan ini telah Dibatalkan.</strong> Stok semua produk dalam rincian pesanan ini telah otomatis dikembalikan ke sistem persediaan.
+                </div>
+
+                <!-- Tabel Rincian Barang -->
+                <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 8px;">
+                    <i class="fa-solid fa-boxes-stacked" style="color: var(--primary);"></i> Rincian Produk yang Dipesan
+                </h4>
+                <table class="data-table" style="margin-bottom: 14px;">
+                    <thead>
+                        <tr>
+                            <th>Barang</th>
+                            <th style="text-align: right;">Harga Satuan</th>
+                            <th style="text-align: center;">Jumlah</th>
+                            <th style="text-align: right;">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-pesanan-items-tbody">
+                        <!-- Loaded dynamically -->
+                    </tbody>
+                </table>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; background: var(--primary-bg); padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid rgba(16, 185, 129, 0.2);">
+                    <span style="font-weight: 700; color: var(--primary-dark); font-size: 14px;">TOTAL BELANJA</span>
+                    <span id="modal-pesanan-total" style="font-weight: 800; color: var(--primary-dark); font-size: 18px; font-family: 'Outfit', sans-serif;">Rp 0</span>
+                </div>
+
+                <!-- Catatan Admin -->
+                <div style="margin-top: 16px;">
+                    <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">
+                        <i class="fa-solid fa-comment-dots"></i> Catatan Internal Admin (Opsional):
+                    </label>
+                    <input type="text" id="modal-pesanan-catatan-admin" class="form-control" placeholder="Tulis catatan (misal: Sudah dikonfirmasi via WA / Dijadwalkan antar sore)">
+                </div>
+            </div>
+            <div class="modal-footer" id="modal-pesanan-footer-actions">
+                <!-- Action buttons based on status -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL 6: KONFIRMASI BATALKAN PESANAN       -->
+    <!-- ========================================== -->
+    <div id="modal-cancel-pesanan" class="modal-overlay">
+        <div class="modal-box" style="max-width: 480px;">
+            <div class="modal-header" style="background: #fee2e2; border-bottom: 1px solid #fecaca;">
+                <h3 style="color: #991b1b; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Batalkan Pesanan?
+                </h3>
+                <button class="modal-close" onclick="closeModal('modal-cancel-pesanan')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 14px; line-height: 1.5; margin-bottom: 12px;">
+                    Anda akan membatalkan pesanan <strong id="cancel-order-no-label">-</strong> atas nama <strong id="cancel-order-customer-label">-</strong>.
+                </p>
+                <div style="background: #fff7ed; border: 1px solid #fed7aa; padding: 12px; border-radius: var(--radius-sm); font-size: 13px; color: #9a3412; margin-bottom: 14px;">
+                    <i class="fa-solid fa-boxes-packing"></i> <strong>Sistem Otomatis:</strong> Stok semua produk dalam pesanan ini akan <u>langsung ditambahkan kembali</u> ke stok toko setelah pembatalan.
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 12px; font-weight: 600;">Alasan Pembatalan (Opsional):</label>
+                    <input type="text" id="cancel-order-reason-input" class="form-control" placeholder="Contoh: Dibatalkan pelanggan / Stok fisik rusak">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-sm-action" onclick="closeModal('modal-cancel-pesanan')">Batal</button>
+                <button type="button" id="btn-confirm-cancel-order" class="btn-primary" style="background: #ef4444;" onclick="executeCancelOrder()">
+                    <i class="fa-solid fa-ban"></i> Ya, Batalkan & Kembalikan Stok
+                </button>
+            </div>
+        </div>
+    </div>
+
     </div><!-- END screen-main -->
     <!-- END OF SCREEN 2: MAIN DASHBOARD & POS -->
 
@@ -2452,19 +2676,22 @@
         // ============================================
         // ROLE-BASED UI ACCESS CONTROL
         // ============================================
-        const KASIR_ALLOWED_TABS = ['pos'];
-        const PEMILIK_ONLY_TABS = ['dasbor', 'barang', 'belanja', 'laporan', 'pengaturan'];
+        const KASIR_ALLOWED_TABS = ['pos', 'pesanan'];
+        const PEMILIK_ONLY_TABS = ['dasbor', 'barang', 'belanja', 'laporan', 'pengaturan', 'pesanan'];
 
         function applyRoleBasedUI() {
             if (currentRole === 'kasir') {
-                // Sembunyikan semua menu kecuali POS
-                PEMILIK_ONLY_TABS.forEach(tab => {
+                // Sembunyikan menu pemilik
+                ['dasbor', 'barang', 'belanja', 'laporan', 'pengaturan'].forEach(tab => {
                     const btn = document.getElementById(`nav-btn-${tab}`);
                     if (btn) btn.style.display = 'none';
                 });
-                // Pastikan tab POS terlihat & aktif
+                // Pastikan tab POS & Pesanan terlihat
                 const posBtn = document.getElementById('nav-btn-pos');
                 if (posBtn) posBtn.style.display = 'inline-flex';
+                const pesananBtn = document.getElementById('nav-btn-pesanan');
+                if (pesananBtn) pesananBtn.style.display = 'inline-flex';
+                
                 // Sembunyikan tombol ganti role
                 const switchBtn = document.getElementById('btn-switch-role');
                 if (switchBtn) switchBtn.style.display = 'none';
@@ -2476,6 +2703,9 @@
                 });
                 const posBtn = document.getElementById('nav-btn-pos');
                 if (posBtn) posBtn.style.display = '';
+                const pesananBtn = document.getElementById('nav-btn-pesanan');
+                if (pesananBtn) pesananBtn.style.display = '';
+                
                 // Tampilkan tombol ganti role (hanya untuk dev/demo)
                 const switchBtn = document.getElementById('btn-switch-role');
                 if (switchBtn) switchBtn.style.display = 'inline-flex';
@@ -2486,7 +2716,7 @@
         function switchTab(tabId) {
             // Blokir akses tab terlarang untuk kasir
             if (currentRole === 'kasir' && !KASIR_ALLOWED_TABS.includes(tabId)) {
-                showToast('Akses ditolak: Kasir hanya dapat mengakses halaman Kasir POS.', 'error');
+                showToast('Akses ditolak: Kasir hanya dapat mengakses halaman Kasir POS dan Pesanan.', 'error');
                 return;
             }
 
@@ -2508,6 +2738,7 @@
 
             // Trigger specific loaders
             if (tabId === 'dasbor') loadDashboard();
+            if (tabId === 'pesanan') loadPesananTab();
             if (tabId === 'pos') loadPosProducts();
             if (tabId === 'barang') loadMasterBarang();
             if (tabId === 'belanja') loadBelanjaTab();
@@ -2608,6 +2839,24 @@
             }
 
             try {
+                // Sync badge pesanan masuk
+                fetch(`${API_BASE}/pesanan?status=menunggu&per_page=1`, { headers: apiHeaders() })
+                    .then(r => r.json())
+                    .then(j => {
+                        if (j.status && j.data && j.data.summary) {
+                            const badge = document.getElementById('badge-pesanan-menunggu');
+                            if (badge) {
+                                const count = j.data.summary.menunggu || 0;
+                                if (count > 0) {
+                                    badge.textContent = count;
+                                    badge.style.display = 'inline-block';
+                                } else {
+                                    badge.style.display = 'none';
+                                }
+                            }
+                        }
+                    }).catch(e => console.warn('Badge sync error', e));
+
                 const res = await fetch(`${API_BASE}/laporan/dasbor`, { headers: apiHeaders() });
                 const json = await res.json();
                 if (json.status) {
@@ -3798,6 +4047,357 @@
             } catch (e) {
                 console.error(e);
                 showToast('Terjadi kesalahan jaringan.', 'error');
+            }
+        }
+
+        // ============================================
+        // 8. MANAJEMEN PESANAN ONLINE (CEK PESANAN)
+        // ============================================
+        let allPesanan = [];
+        let currentPesananFilterStatus = 'semua';
+        let activeDetailPesanan = null;
+        let cancelTargetPesanan = null;
+
+        async function loadPesananTab() {
+            const tbody = document.getElementById('pesanan-tbody');
+            if (!tbody) return;
+
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 24px; color: var(--text-muted);"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data pesanan...</td></tr>`;
+
+            try {
+                let url = `${API_BASE}/pesanan?per_page=100`;
+                if (currentPesananFilterStatus && currentPesananFilterStatus !== 'semua') {
+                    url += `&status=${currentPesananFilterStatus}`;
+                }
+
+                const res = await fetch(url, { headers: apiHeaders() });
+                const json = await res.json();
+
+                if (json.status && json.data) {
+                    const summary = json.data.summary || {};
+                    const list = json.data.pesanan?.data || [];
+                    allPesanan = list;
+
+                    // Update metrics
+                    if (document.getElementById('val-pesanan-menunggu')) document.getElementById('val-pesanan-menunggu').textContent = summary.menunggu || 0;
+                    if (document.getElementById('val-pesanan-diproses')) document.getElementById('val-pesanan-diproses').textContent = summary.diproses || 0;
+                    if (document.getElementById('val-pesanan-selesai')) document.getElementById('val-pesanan-selesai').textContent = summary.selesai || 0;
+                    if (document.getElementById('val-pesanan-dibatalkan')) document.getElementById('val-pesanan-dibatalkan').textContent = summary.dibatalkan || 0;
+
+                    // Update navbar badge
+                    const badge = document.getElementById('badge-pesanan-menunggu');
+                    if (badge) {
+                        const count = summary.menunggu || 0;
+                        if (count > 0) {
+                            badge.textContent = count;
+                            badge.style.display = 'inline-block';
+                        } else {
+                            badge.style.display = 'none';
+                        }
+                    }
+
+                    renderPesananTable(allPesanan);
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 24px; color: var(--text-muted);">${json.message || 'Gagal memuat pesanan.'}</td></tr>`;
+                }
+            } catch (err) {
+                console.error('Pesanan load error:', err);
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 24px; color: var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i> Gagal terhubung ke server.</td></tr>`;
+            }
+        }
+
+        function filterPesananStatus(status) {
+            currentPesananFilterStatus = status;
+            const select = document.getElementById('filter-pesanan-status-select');
+            if (select) select.value = status;
+            loadPesananTab();
+        }
+
+        function filterPesananList() {
+            const query = (document.getElementById('search-pesanan-input')?.value || '').trim().toLowerCase();
+            if (!query) {
+                renderPesananTable(allPesanan);
+                return;
+            }
+
+            const filtered = allPesanan.filter(p => {
+                return (p.no_pesanan && p.no_pesanan.toLowerCase().includes(query)) ||
+                       (p.nama_pemesan && p.nama_pemesan.toLowerCase().includes(query)) ||
+                       (p.no_telepon && p.no_telepon.toLowerCase().includes(query)) ||
+                       (p.alamat && p.alamat.toLowerCase().includes(query));
+            });
+
+            renderPesananTable(filtered);
+        }
+
+        function getStatusBadgeHtml(status) {
+            switch (status) {
+                case 'menunggu':
+                    return `<span style="background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-clock"></i> Menunggu</span>`;
+                case 'diproses':
+                    return `<span style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-boxes-packing"></i> Diproses</span>`;
+                case 'selesai':
+                    return `<span style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-circle-check"></i> Selesai</span>`;
+                case 'dibatalkan':
+                    return `<span style="background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-circle-xmark"></i> Dibatalkan</span>`;
+                default:
+                    return `<span style="background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px;">${status}</span>`;
+            }
+        }
+
+        function renderPesananTable(list) {
+            const tbody = document.getElementById('pesanan-tbody');
+            if (!tbody) return;
+
+            if (!list || list.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 36px 14px; color: var(--text-muted);">
+                            <i class="fa-solid fa-bell-slash" style="font-size: 32px; color: #cbd5e1; margin-bottom: 8px; display: block;"></i>
+                            Tidak ada data pesanan yang sesuai filter.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = list.map(p => {
+                // Ringkasan items
+                let itemsSummary = '-';
+                if (p.details && p.details.length > 0) {
+                    const firstFew = p.details.slice(0, 2).map(d => {
+                        const name = d.barang ? d.barang.nama_barang : 'Barang';
+                        return `${name} (${d.jumlah}x)`;
+                    }).join(', ');
+                    const extra = p.details.length > 2 ? ` <span style="color:var(--text-muted); font-size:11px;">+${p.details.length - 2} lainnya</span>` : '';
+                    itemsSummary = `<strong>${firstFew}</strong>${extra}`;
+                }
+
+                // Format tanggal
+                const tgl = p.tanggal ? new Date(p.tanggal).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
+
+                // WA Link
+                let waLink = '';
+                if (p.no_telepon) {
+                    const cleanPhone = p.no_telepon.replace(/^0/, '62').replace(/[^0-9]/g, '');
+                    waLink = `<a href="https://api.whatsapp.com/send?phone=${cleanPhone}" target="_blank" style="color: #10b981; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" title="Chat WhatsApp"><i class="fa-brands fa-whatsapp"></i> ${p.no_telepon}</a>`;
+                }
+
+                // Action buttons based on status
+                let actionsHtml = `
+                    <div style="display: flex; gap: 6px; justify-content: center; align-items: center;">
+                        <button class="btn-sm-action" onclick="openModalDetailPesanan(${p.id})" title="Lihat Detail Rincian Pesanan">
+                            <i class="fa-solid fa-eye"></i> Detail
+                        </button>
+                `;
+
+                if (p.status === 'menunggu') {
+                    actionsHtml += `
+                        <button class="btn-sm-action" style="background: #0284c7; color: white; border-color: #0284c7;" onclick="updateStatusPesanan(${p.id}, 'diproses')" title="Proses Pesanan">
+                            <i class="fa-solid fa-boxes-packing"></i> Proses
+                        </button>
+                        <button class="btn-sm-action" style="background: #ef4444; color: white; border-color: #ef4444;" onclick="confirmCancelPesanan(${p.id}, '${p.no_pesanan}', '${p.nama_pemesan}')" title="Batalkan Pesanan (Stok Kembali)">
+                            <i class="fa-solid fa-ban"></i> Batal
+                        </button>
+                    `;
+                } else if (p.status === 'diproses') {
+                    actionsHtml += `
+                        <button class="btn-sm-action" style="background: #059669; color: white; border-color: #059669;" onclick="updateStatusPesanan(${p.id}, 'selesai')" title="Tandai Selesai">
+                            <i class="fa-solid fa-circle-check"></i> Selesai
+                        </button>
+                        <button class="btn-sm-action" style="background: #ef4444; color: white; border-color: #ef4444;" onclick="confirmCancelPesanan(${p.id}, '${p.no_pesanan}', '${p.nama_pemesan}')" title="Batalkan Pesanan (Stok Kembali)">
+                            <i class="fa-solid fa-ban"></i> Batal
+                        </button>
+                    `;
+                } else if (p.status === 'dibatalkan') {
+                    actionsHtml += `
+                        <span style="font-size: 11px; color: #991b1b; font-style: italic;">Stok Dikembalikan</span>
+                    `;
+                }
+
+                actionsHtml += `</div>`;
+
+                return `
+                    <tr>
+                        <td>
+                            <strong style="font-family: 'Outfit', sans-serif; color: var(--primary-dark); font-size: 13.5px;">${p.no_pesanan}</strong>
+                        </td>
+                        <td style="font-size: 12.5px; color: var(--text-muted);">${tgl}</td>
+                        <td>
+                            <strong style="color: var(--text-main); font-size: 13.5px;">${p.nama_pemesan}</strong>
+                        </td>
+                        <td style="font-size: 12.5px;">
+                            ${waLink ? `<div>${waLink}</div>` : ''}
+                            ${p.alamat ? `<small style="color: var(--text-muted); display:block; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${p.alamat}">${p.alamat}</small>` : ''}
+                        </td>
+                        <td style="font-size: 12.5px; max-width: 220px;">
+                            ${itemsSummary}
+                        </td>
+                        <td>
+                            <strong style="font-family: 'Outfit', sans-serif; font-size: 14px; color: var(--text-main);">${formatRupiah(p.total_harga)}</strong>
+                        </td>
+                        <td>
+                            ${getStatusBadgeHtml(p.status)}
+                        </td>
+                        <td style="text-align: center;">
+                            ${actionsHtml}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Open Detail Modal
+        async function openModalDetailPesanan(id) {
+            try {
+                const res = await fetch(`${API_BASE}/pesanan/${id}`, { headers: apiHeaders() });
+                const json = await res.json();
+
+                if (!json.status || !json.data) {
+                    showToast('Gagal memuat detail pesanan.', 'error');
+                    return;
+                }
+
+                const p = json.data;
+                activeDetailPesanan = p;
+
+                document.getElementById('modal-pesanan-no').textContent = p.no_pesanan;
+                document.getElementById('modal-pesanan-status-wrap').innerHTML = getStatusBadgeHtml(p.status);
+                document.getElementById('modal-pesanan-nama').textContent = p.nama_pemesan;
+                
+                let phoneHtml = '-';
+                if (p.no_telepon) {
+                    const cleanPhone = p.no_telepon.replace(/^0/, '62').replace(/[^0-9]/g, '');
+                    phoneHtml = `<a href="https://api.whatsapp.com/send?phone=${cleanPhone}" target="_blank" style="color: #10b981; font-weight: 700; text-decoration: none;"><i class="fa-brands fa-whatsapp"></i> ${p.no_telepon}</a>`;
+                }
+                document.getElementById('modal-pesanan-telepon').innerHTML = phoneHtml;
+                document.getElementById('modal-pesanan-waktu').textContent = p.tanggal ? new Date(p.tanggal).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' }) : '-';
+                document.getElementById('modal-pesanan-alamat').textContent = p.alamat || (p.catatan ? `Catatan: ${p.catatan}` : '-');
+                document.getElementById('modal-pesanan-total').textContent = formatRupiah(p.total_harga);
+                document.getElementById('modal-pesanan-catatan-admin').value = p.catatan_admin || '';
+
+                // Banner pembatalan & pengembalian stok
+                const bannerBatal = document.getElementById('modal-pesanan-banner-batal');
+                if (bannerBatal) {
+                    bannerBatal.style.display = p.status === 'dibatalkan' ? 'block' : 'none';
+                }
+
+                // Render Items table
+                const tbody = document.getElementById('modal-pesanan-items-tbody');
+                if (p.details && p.details.length > 0) {
+                    tbody.innerHTML = p.details.map(d => {
+                        const b = d.barang || {};
+                        return `
+                            <tr>
+                                <td>
+                                    <div style="font-weight: 700; color: var(--text-main); font-size: 13.5px;">${b.nama_barang || 'Barang'}</div>
+                                    <small style="color: var(--text-muted); font-size: 11px;">SKU: ${b.kode_sku || '-'} • Satuan: ${b.satuan || 'pcs'}</small>
+                                </td>
+                                <td style="text-align: right; font-size: 13px;">${formatRupiah(d.harga_satuan)}</td>
+                                <td style="text-align: center; font-weight: 700; font-size: 13.5px;">${d.jumlah} ${b.satuan || 'pcs'}</td>
+                                <td style="text-align: right; font-weight: 800; color: var(--primary-dark); font-family: 'Outfit', sans-serif;">${formatRupiah(d.subtotal)}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Tidak ada rincian item.</td></tr>`;
+                }
+
+                // Render Footer Action Buttons
+                const footer = document.getElementById('modal-pesanan-footer-actions');
+                let footerBtns = `<button type="button" class="btn-sm-action" onclick="closeModal('modal-detail-pesanan')">Tutup</button>`;
+
+                if (p.status === 'menunggu') {
+                    footerBtns += `
+                        <button type="button" class="btn-primary" style="background: #ef4444;" onclick="closeModal('modal-detail-pesanan'); confirmCancelPesanan(${p.id}, '${p.no_pesanan}', '${p.nama_pemesan}')">
+                            <i class="fa-solid fa-ban"></i> Batalkan Pesanan
+                        </button>
+                        <button type="button" class="btn-primary" style="background: #0284c7;" onclick="updateStatusPesanan(${p.id}, 'diproses', document.getElementById('modal-pesanan-catatan-admin').value)">
+                            <i class="fa-solid fa-boxes-packing"></i> Terima & Proses Pesanan
+                        </button>
+                    `;
+                } else if (p.status === 'diproses') {
+                    footerBtns += `
+                        <button type="button" class="btn-primary" style="background: #ef4444;" onclick="closeModal('modal-detail-pesanan'); confirmCancelPesanan(${p.id}, '${p.no_pesanan}', '${p.nama_pemesan}')">
+                            <i class="fa-solid fa-ban"></i> Batalkan Pesanan
+                        </button>
+                        <button type="button" class="btn-primary" style="background: #059669;" onclick="updateStatusPesanan(${p.id}, 'selesai', document.getElementById('modal-pesanan-catatan-admin').value)">
+                            <i class="fa-solid fa-circle-check"></i> Tandai Pesanan Selesai
+                        </button>
+                    `;
+                } else if (p.status === 'dibatalkan') {
+                    footerBtns += `
+                        <button type="button" class="btn-primary" style="background: #0284c7;" onclick="updateStatusPesanan(${p.id}, 'menunggu', document.getElementById('modal-pesanan-catatan-admin').value)">
+                            <i class="fa-solid fa-rotate-left"></i> Aktifkan Kembali Pesanan
+                        </button>
+                    `;
+                }
+
+                footer.innerHTML = footerBtns;
+                openModal('modal-detail-pesanan');
+            } catch (err) {
+                console.error('Detail order error:', err);
+                showToast('Gagal memuat detail pesanan.', 'error');
+            }
+        }
+
+        // Update status pesanan (Konfirmasi, Selesai, Batalkan)
+        async function updateStatusPesanan(id, newStatus, reason = null) {
+            try {
+                const payload = {
+                    status: newStatus,
+                    catatan_admin: reason
+                };
+
+                const res = await fetch(`${API_BASE}/pesanan/${id}/status`, {
+                    method: 'PUT',
+                    headers: apiHeaders(),
+                    body: JSON.stringify(payload)
+                });
+
+                const json = await res.json();
+
+                if (json.status) {
+                    showToast(json.message || `Status pesanan berhasil diubah menjadi ${newStatus}.`, 'success');
+                    closeModal('modal-detail-pesanan');
+                    loadPesananTab();
+                    
+                    // Muat ulang katalog produk & POS untuk merefresh stok yang telah bertambah/berkurang
+                    loadPosProducts();
+                    if (currentRole === 'pemilik') loadMasterBarang();
+                } else {
+                    showToast(json.message || 'Gagal memperbarui status pesanan.', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Terjadi kesalahan jaringan saat update status.', 'error');
+            }
+        }
+
+        // Modal Konfirmasi Pembatalan Pesanan
+        function confirmCancelPesanan(id, noPesanan, namaPemesan) {
+            cancelTargetPesanan = { id, noPesanan, namaPemesan };
+            document.getElementById('cancel-order-no-label').textContent = noPesanan;
+            document.getElementById('cancel-order-customer-label').textContent = namaPemesan;
+            document.getElementById('cancel-order-reason-input').value = '';
+            openModal('modal-cancel-pesanan');
+        }
+
+        async function executeCancelOrder() {
+            if (!cancelTargetPesanan) return;
+            const btn = document.getElementById('btn-confirm-cancel-order');
+            const reason = document.getElementById('cancel-order-reason-input').value.trim();
+
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Membatalkan & Mengembalikan Stok...`;
+
+            try {
+                await updateStatusPesanan(cancelTargetPesanan.id, 'dibatalkan', reason || 'Dibatalkan oleh Admin');
+                closeModal('modal-cancel-pesanan');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-ban"></i> Ya, Batalkan & Kembalikan Stok`;
+                cancelTargetPesanan = null;
             }
         }
 

@@ -7,13 +7,14 @@ use App\Http\Controllers\Api\KategoriController;
 use App\Http\Controllers\Api\LaporanController;
 use App\Http\Controllers\Api\PengaturanController;
 use App\Http\Controllers\Api\PenjualanController;
+use App\Http\Controllers\Api\PesananController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes - Toko Kelontong NURMART (Backend for Flutter Mobile)
+| API Routes - Toko Kelontong NURMART (Backend for Flutter Mobile & Web)
 |--------------------------------------------------------------------------
 */
 
@@ -22,6 +23,11 @@ use Illuminate\Support\Facades\Route;
 // ========================
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/penjualan/{id}/cetak-struk', [PenjualanController::class, 'cetakStrukPdf']);
+
+// Public Catalog & Order (Akses Umum untuk Pemesanan Barang)
+Route::get('/public/produk', [PesananController::class, 'getProdukKatalog']);
+Route::post('/public/cek-stok', [PesananController::class, 'cekStok']);
+Route::post('/public/pesanan', [PesananController::class, 'storePesanan']);
 
 // ===================================
 // 2. PROTECTED ROUTES (Sanctum Auth)
@@ -55,6 +61,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/penjualan', [PenjualanController::class, 'index']);
     Route::post('/penjualan', [PenjualanController::class, 'store']);
     Route::get('/penjualan/{id}', [PenjualanController::class, 'show']);
+
+    // Manajemen Pesanan Online Pelanggan (Kasir & Pemilik)
+    Route::get('/pesanan', [PesananController::class, 'index']);
+    Route::get('/pesanan/{id}', [PesananController::class, 'show']);
+    Route::put('/pesanan/{id}/status', [PesananController::class, 'updateStatus']);
+    Route::delete('/pesanan/{id}', [PesananController::class, 'destroy']);
 
     // =========================================================================
     // 4. OWNER ONLY ROUTES (Role: pemilik)

@@ -98,6 +98,11 @@ class Barang extends Model
         return $this->hasMany(DetailPenjualan::class, 'barang_id');
     }
 
+    public function detailPesanans(): HasMany
+    {
+        return $this->hasMany(DetailPesanan::class, 'barang_id');
+    }
+
     /**
      * Scope for searching by keyword (sku, barcode, or name)
      */
