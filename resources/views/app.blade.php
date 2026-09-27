@@ -2575,6 +2575,9 @@
         let currentPenjualanId = null;
         let cancelTargetPesanan = null;
         let deleteTargetPesanan = null;
+        let allPesanan = [];
+        let currentPesananFilterStatus = 'semua';
+        let activeDetailPesanan = null;
 
         // Login & Authentication Management
         function togglePasswordVisibility() {
@@ -4174,10 +4177,6 @@
         // ============================================
         // 8. MANAJEMEN PESANAN ONLINE (CEK PESANAN)
         // ============================================
-        let allPesanan = [];
-        let currentPesananFilterStatus = 'semua';
-        let activeDetailPesanan = null;
-        let cancelTargetPesanan = null;
 
         async function loadPesananTab() {
             const grid = document.getElementById('pesanan-cards-grid');
