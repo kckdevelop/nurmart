@@ -2281,9 +2281,32 @@
                         </div>
                     </div>
 
-                    <!-- Upload Gambar Produk -->
+                    <!-- Upload / Edit Gambar Produk -->
                     <div class="form-group" style="margin-top: 4px;">
                         <label>Foto Produk</label>
+
+                        <!-- [EDIT MODE] Gambar Lama yang sudah tersimpan -->
+                        <div id="gambar-existing-wrap" style="display:none; background:#f0fdf4; border:1.5px solid #86efac; border-radius:var(--radius-md); padding:14px; margin-bottom:10px;">
+                            <div style="font-size:12px; font-weight:700; color:#15803d; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                                <i class="fa-solid fa-circle-check"></i> Gambar Produk Saat Ini
+                            </div>
+                            <div style="display:flex; align-items:center; gap:14px;">
+                                <img id="gambar-existing-img" src="" alt="Gambar saat ini" style="width:80px; height:80px; object-fit:cover; border-radius:10px; border:1px solid #86efac; flex-shrink:0;">
+                                <div style="flex:1;">
+                                    <p style="font-size:12px; color:#15803d; margin-bottom:10px;">Gambar ini tersimpan di server. Upload gambar baru untuk menggantinya, atau hapus gambar ini.</p>
+                                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                        <button type="button" onclick="triggerGantiGambar()" style="display:inline-flex;align-items:center;gap:6px;background:#0284c7;color:white;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">
+                                            <i class="fa-solid fa-image"></i> Ganti Gambar
+                                        </button>
+                                        <button type="button" id="btn-hapus-gambar-existing" onclick="hapusGambarProduk()" style="display:inline-flex;align-items:center;gap:6px;background:#ef4444;color:white;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;">
+                                            <i class="fa-solid fa-trash"></i> Hapus Gambar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Area Upload (selalu tampil di mode tambah; di mode edit tampil setelah klik Ganti) -->
                         <div id="gambar-upload-area" style="border: 2px dashed var(--light-border); border-radius: var(--radius-md); padding: 16px; text-align: center; cursor: pointer; transition: border-color 0.2s;" onclick="document.getElementById('input-barang-gambar').click()" ondragover="event.preventDefault(); this.style.borderColor='var(--primary)'" ondragleave="this.style.borderColor='var(--light-border)'" ondrop="handleGambarDrop(event)">
                             <div id="gambar-preview-wrap" style="display:none; position:relative; display:inline-block;">
                                 <img id="gambar-preview-img" src="" alt="Preview" style="max-height:120px; max-width:100%; border-radius:8px; object-fit:cover;">
@@ -3255,6 +3278,9 @@
             document.getElementById('input-barang-jual').value = '';
             document.getElementById('input-barang-stok').value = '10';
             document.getElementById('input-barang-satuan').value = 'pcs';
+            // Reset gambar area sepenuhnya untuk mode tambah
+            document.getElementById('gambar-existing-wrap').style.display = 'none';
+            document.getElementById('gambar-upload-area').style.display = 'block';
             clearGambarPreviewOnly();
             openModal('modal-barang');
         }
@@ -3303,6 +3329,55 @@
             clearGambarPreviewOnly();
         }
 
+        // Tampilkan area upload untuk mengganti gambar yang sudah ada
+        function triggerGantiGambar() {
+            document.getElementById('gambar-upload-area').style.display = 'block';
+            clearGambarPreviewOnly();
+            document.getElementById('input-barang-gambar').click();
+        }
+
+        // Hapus gambar produk via API tanpa hapus produknya
+        async function hapusGambarProduk() {
+            const id = document.getElementById('barang-id').value;
+            if (!id) return;
+            if (!confirm('Yakin ingin menghapus gambar produk ini?')) return;
+
+            const btn = document.getElementById('btn-hapus-gambar-existing');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menghapus...';
+
+            try {
+                const res = await fetch(`${API_BASE}/barang/${id}/gambar`, {
+                    method: 'DELETE',
+                    headers: apiHeaders()
+                });
+                const json = await res.json();
+                if (json.status) {
+                    showToast('Gambar produk berhasil dihapus.', 'success');
+                    // Sembunyikan existing wrap, tampilkan area upload baru
+                    document.getElementById('gambar-existing-wrap').style.display = 'none';
+                    document.getElementById('gambar-upload-area').style.display = 'block';
+                    clearGambarPreviewOnly();
+                    // Update data produk lokal
+                    const productIdx = allProducts.findIndex(p => p.id === parseInt(id));
+                    if (productIdx >= 0) {
+                        allProducts[productIdx].gambar_url = null;
+                        allProducts[productIdx].gambar_full_url = null;
+                    }
+                    loadMasterBarang();
+                    loadPosProducts();
+                } else {
+                    showToast(json.message || 'Gagal menghapus gambar.', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Terjadi kesalahan jaringan.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-trash"></i> Hapus Gambar';
+            }
+        }
+
         // Modal lightbox untuk lihat gambar produk penuh
         function showGambarModal(url, nama) {
             const overlay = document.createElement('div');
@@ -3331,11 +3406,18 @@
             document.getElementById('input-barang-stok').value = item.stok;
             document.getElementById('input-barang-satuan').value = item.satuan;
 
-            // Tampilkan preview gambar yang sudah ada
+            // Reset file input baru
+            clearGambarPreviewOnly();
+
             if (item.gambar_full_url) {
-                setGambarPreview(item.gambar_full_url);
+                // Ada gambar tersimpan — tampilkan panel gambar lama, sembunyikan upload area
+                document.getElementById('gambar-existing-img').src = item.gambar_full_url;
+                document.getElementById('gambar-existing-wrap').style.display = 'block';
+                document.getElementById('gambar-upload-area').style.display = 'none';
             } else {
-                clearGambarPreviewOnly();
+                // Tidak ada gambar — langsung tampilkan upload area
+                document.getElementById('gambar-existing-wrap').style.display = 'none';
+                document.getElementById('gambar-upload-area').style.display = 'block';
             }
 
             openModal('modal-barang');
