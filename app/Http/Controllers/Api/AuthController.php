@@ -21,9 +21,27 @@ class AuthController extends Controller
      */
     public function login(LoginRequest $request): JsonResponse
     {
-        $user = User::where('email', $request->email)->first();
+        // Ambil identifier login: bisa dari field 'email', 'username', atau 'login'
+        $loginIdentifier = $request->email ?? $request->username ?? $request->login ?? '';
+        $loginIdentifier = trim($loginIdentifier);
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (empty($loginIdentifier)) {
+            return $this->errorResponse('Email atau username wajib diisi.', 422);
+        }
+
+        // Coba cari user berdasarkan email atau nama
+        $user = User::where('email', $loginIdentifier)->first();
+
+        // Jika tidak ketemu by email, coba cari by name (untuk username-style login)
+        if (!$user) {
+            $user = User::where('name', $loginIdentifier)->first();
+        }
+
+        if (!$user) {
+            return $this->errorResponse('Email atau password salah.', 401);
+        }
+
+        if (!Hash::check($request->password, $user->password)) {
             return $this->errorResponse('Email atau password salah.', 401);
         }
 
