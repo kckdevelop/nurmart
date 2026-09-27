@@ -43,7 +43,12 @@ class LaporanController extends Controller
             ->selectRaw('SUM((detail_penjualan.harga_jual_satuan - barang.harga_beli) * detail_penjualan.jumlah) as margin')
             ->value('margin') ?? 0;
 
-        // 4. Monitoring Stok Menipis (stok <= 10)
+        // 4. Nilai Aset Modal Stok Barang (Uang yang Masih Berupa Barang)
+        $totalModalBarang = (float) Barang::selectRaw('SUM(stok * harga_beli) as total_modal')
+            ->value('total_modal') ?? 0;
+        $totalStokFisik = (int) Barang::sum('stok');
+
+        // 5. Monitoring Stok Menipis (stok <= 10)
         $lowStockQuery = Barang::with('kategori')->stokMenipis(10);
         $totalStokMenipis = $lowStockQuery->count();
         $daftarStokMenipis = $lowStockQuery->orderBy('stok', 'asc')->limit(10)->get();
@@ -64,6 +69,8 @@ class LaporanController extends Controller
             ],
             'inventaris' => [
                 'total_produk' => $totalProduk,
+                'total_stok_fisik' => $totalStokFisik,
+                'total_modal_barang' => $totalModalBarang,
                 'total_stok_menipis' => $totalStokMenipis,
                 'daftar_stok_menipis' => $daftarStokMenipis,
             ],

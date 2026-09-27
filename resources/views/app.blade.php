@@ -258,6 +258,7 @@
         .metric-card.green::before { background: var(--primary); }
         .metric-card.blue::before { background: #0284c7; }
         .metric-card.amber::before { background: var(--accent); }
+        .metric-card.purple::before { background: #8b5cf6; }
         .metric-card.red::before { background: var(--danger); }
 
         .metric-info h4 {
@@ -288,6 +289,7 @@
         .metric-card.green .metric-icon { background: var(--primary-bg); color: var(--primary); }
         .metric-card.blue .metric-icon { background: #e0f2fe; color: #0284c7; }
         .metric-card.amber .metric-icon { background: var(--accent-light); color: var(--accent); }
+        .metric-card.purple .metric-icon { background: #f3e8ff; color: #8b5cf6; }
         .metric-card.red .metric-icon { background: var(--danger-bg); color: var(--danger); }
 
         /* Quick Warning Banner */
@@ -1386,6 +1388,17 @@
                     </div>
                     <div class="metric-icon">
                         <i class="fa-solid fa-hand-holding-dollar"></i>
+                    </div>
+                </div>
+
+                <div class="metric-card purple">
+                    <div class="metric-info">
+                        <h4>Modal / Nilai Stok Barang</h4>
+                        <div class="value" id="val-modal-barang">Rp 0</div>
+                        <small id="val-total-stok-fisik" style="color: var(--text-muted); font-size: 12px;">Uang dalam 0 unit barang</small>
+                    </div>
+                    <div class="metric-icon">
+                        <i class="fa-solid fa-boxes-stacked"></i>
                     </div>
                 </div>
 
@@ -2838,6 +2851,8 @@
                 document.getElementById('val-omset-hari').innerText = 'Akses Terproteksi';
                 document.getElementById('val-omset-bulan').innerText = 'Khusus Pemilik';
                 document.getElementById('val-margin-bulan').innerText = '-';
+                const elModal = document.getElementById('val-modal-barang');
+                if (elModal) elModal.innerText = '-';
                 return;
             }
 
@@ -2870,6 +2885,11 @@
                     document.getElementById('val-omset-bulan').innerText = formatRupiah(d.bulan_ini.total_omset);
                     document.getElementById('val-transaksi-bulan').innerText = `${d.bulan_ini.total_transaksi} Transaksi`;
                     document.getElementById('val-margin-bulan').innerText = formatRupiah(d.bulan_ini.total_keuntungan_margin);
+
+                    const elModal = document.getElementById('val-modal-barang');
+                    if (elModal) elModal.innerText = formatRupiah(d.inventaris.total_modal_barang || 0);
+                    const elStokFisik = document.getElementById('val-total-stok-fisik');
+                    if (elStokFisik) elStokFisik.innerText = `Uang dalam ${d.inventaris.total_stok_fisik || 0} unit barang`;
 
                     document.getElementById('val-total-menipis').innerText = d.inventaris.total_stok_menipis;
                     document.getElementById('val-total-produk').innerText = `Dari total ${d.inventaris.total_produk} produk`;

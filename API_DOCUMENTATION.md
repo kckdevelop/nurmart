@@ -1,662 +1,669 @@
-# Dokumentasi Penggunaan API & Panduan User - Toko Kelontong NURMART
+# DOKUMENTASI API BACKEND NURMART (Laravel 12)
 
-Dokumentasi ini disusun untuk developer aplikasi mobile (Flutter) dan tim teknis backend yang mengelola sistem backend Toko Kelontong **NURMART** berbasis **Laravel 12**.
+Dokumentasi lengkap mengenai arsitektur antarmuka pemrograman aplikasi (API), format request/response, hak akses (RBAC), dan contoh integrasi untuk sistem manajemen kasir dan inventaris Toko NURMART.
 
 ---
 
 ## 1. Panduan Server & Koneksi
 
-### Base URL
-- **Localhost (Web / Postman):** `http://localhost:8000/api`
-- **Android Emulator (Default):** `http://10.0.2.2:8000/api`
-- **Real Device Android/iOS (Satu Jaringan Wi-Fi):** `http://<IP_KOMPUTER_SERVER>:8000/api`
-  > *Contoh:* `http://192.168.1.10:8000/api`
-
-### Menjalankan Server
-Untuk mengizinkan koneksi dari HP / Emulator Flutter:
-```bash
-php artisan serve --host=0.0.0.0 --port=8000
-```
-
-### Format Header HTTP Wajib
-Kecuali endpoint `/login` dan `/penjualan/{id}/cetak-struk`, seluruh request wajib menyertakan header berikut:
-```http
-Accept: application/json
-Content-Type: application/json
-Authorization: Bearer <TOKEN_SANCTUM_ANDA>
-```
-*(Khusus endpoint upload gambar produk, gunakan `multipart/form-data`)*
+- **Base URL Pengembangan (Lokal)**: `http://localhost:8000/api` atau `http://10.0.2.2:8000/api` (Android Emulator)
+- **Base URL Server Jaringan (LAN/HP Fisik)**: `http://<IP_KOMPUTER_SERVER>:8000/api`
+- **Tipe Komunikasi**: RESTful API JSON over HTTP
+- **Default Port**: `8000` (dijalankan melalui `php artisan serve --host=0.0.0.0 --port=8000`)
+- **Autentikasi Header**:
+  ```http
+  Authorization: Bearer <token_sanctum_anda>
+  Accept: application/json
+  ```
+  *(Catatan: Header `Authorization` tidak diperlukan untuk endpoint publik seperti `/public/*`, `/login`, dan cetak struk via URL `/penjualan/cetak-struk/{no_faktur}`)*
 
 ---
 
 ## 2. Format Respon JSON Standar
 
-Semua endpoint mengembalikan struktur JSON yang seragam untuk mempermudah pembuatan model di Flutter:
+Semua respon dari API NURMART dibungkus dalam format seragam:
 
-### Respon Sukses (HTTP 200 / 201)
+### 2.1 Respon Berhasil (Success)
 ```json
 {
-  "status": true,
-  "message": "Operasi berhasil dilakukan",
-  "data": { ... }
+  "success": true,
+  "message": "Pesan deskriptif aksi yang berhasil.",
+  "data": { ... } // Objek atau Array data
 }
 ```
 
-### Respon Validasi Gagal (HTTP 422)
+### 2.2 Respon Validasi Gagal (HTTP 422 Unprocessable Entity)
 ```json
 {
-  "status": false,
-  "message": "Validasi data gagal",
+  "success": false,
+  "message": "Validasi gagal",
   "errors": {
-    "kode_sku": [
-      "Kode SKU sudah terdaftar."
+    "nama_field": [
+      "Pesan error spesifik pada field tersebut."
     ]
   }
 }
 ```
 
-### Respon Tidak Diizinkan / Unauthenticated (HTTP 401 & 403)
+### 2.3 Respon Tidak Diizinkan / Autentikasi Gagal (HTTP 401 & 403)
 ```json
 {
-  "status": false,
-  "message": "Akses ditolak: Anda tidak memiliki wewenang untuk fitur ini."
+  "success": false,
+  "message": "Unauthenticated." // atau "Akses ditolak. Anda tidak memiliki izin."
+}
+```
+
+### 2.4 Respon Not Found (HTTP 404)
+```json
+{
+  "success": false,
+  "message": "Data tidak ditemukan."
 }
 ```
 
 ---
 
-## 3. Manajemen User & Hak Akses (Role)
+## 3. Manajemen User & Hak Akses (Role-Based Access Control)
 
-Sistem membedakan pengguna menjadi 2 peran (*roles*):
+Aplikasi memiliki 3 level hak akses (*Role*):
 
-| Peran (Role) | Deskripsi | Hak Akses Fitur |
-| :--- | :--- | :--- |
-| **`pemilik`** | Pemilik Toko (Owner) | **Akses Penuh:** Dashboard & Laporan Keuangan, Pembelian Belanja (Kulakan), CRUD Master Data (Barang, Kategori, Supplier), Manajemen Pengguna/Kasir, dan Pengaturan Toko. |
-| **`kasir`** | Operator Kasir (Staff) | **Hanya POS:** Transaksi Penjualan POS, Cetak Struk Belanja, Riwayat Penjualan, dan Baca Master Data Produk/Kategori (Read-Only untuk kasir). Tidak memiliki akses ke data Supplier, Belanja, Manajemen User, Pengaturan Toko, maupun Laporan. |
-
-> [!IMPORTANT]
-> **Kebijakan Pembatasan Akses Kasir (Update 24 Sep 2026):**
-> 1. Pada antarmuka Web Dashboard (`/`), akun dengan role **kasir** hanya dapat melihat dan mengakses **Tab Kasir POS**. Seluruh tombol navigasi admin, manajemen data, dan laporan disembunyikan dan diblokir.
-> 2. Pada REST API, endpoint **Supplier** (`/api/supplier`) kini sepenuhnya dipindahkan ke grup **Pemilik Saja** (`role:pemilik`), sehingga kasir tidak dapat mengakses daftar supplier maupun data kulakan.
-
-### Akun Uji Coba Bawaan (Default Seeder)
-
-| Email | Password | Role | Keterangan |
-| :--- | :--- | :--- | :--- |
-| `pemilik@nurmart.com` | `password123` | `pemilik` | Akun Owner untuk manajemen toko & laporan |
-| `kasir@nurmart.com` | `password123` | `kasir` | Akun Kasir untuk operasional POS harian |
+1. **`super_admin`**:
+   - Memiliki akses penuh tanpa batasan ke seluruh endpoint sistem, termasuk konfigurasi toko, kelola user, modifikasi data master, stok opname, reset data, dan laporan finansial.
+2. **`admin`**:
+   - Memiliki akses operasional penuh (barang, kategori, supplier, transaksi belanja barang, pemesanan online, dan laporan).
+   - *Tidak dapat* mengelola pengguna lain (tambah/hapus admin/kasir) atau mengubah pengaturan sistem tingkat lanjut jika dibatasi.
+3. **`kasir`**:
+   - Dikhususkan untuk aktivitas Point of Sales (POS) di kasir: transaksi penjualan, cek ketersediaan stok barang, melihat riwayat transaksi sendiri, cetak ulang struk, dan mengubah kata sandi akun sendiri.
 
 ---
 
 ## 4. Matriks Akses Endpoint
 
-Tabel berikut menunjukkan hak akses untuk masing-masing peran pengguna:
-
-| Modul | Endpoint | Method | Kasir | Pemilik | Keterangan |
-| :--- | :--- | :--- | :---: | :---: | :--- |
-| **Auth & Profil** | `/api/login` | `POST` | ✅ | ✅ | Publik / Tanpa token |
-| | `/api/profile` | `GET` | ✅ | ✅ | Info profil akun aktif |
-| | `/api/profile` | `PUT` | ✅ | ✅ | Update nama, telp, alamat, password |
-| | `/api/refresh-token` | `POST` | ✅ | ✅ | Perbarui token Sanctum |
-| | `/api/logout` | `POST` | ✅ | ✅ | Hapus sesi token aktif |
-| **Pengaturan Toko** | `/api/pengaturan` | `GET` | ✅ | ✅ | Read-only (Info toko, kontak, struk) |
-| | `/api/pengaturan` | `PUT` | ❌ | 🔒 | Update info toko & footer struk |
-| **Manajemen User** | `/api/users` | `GET` | ❌ | 🔒 | Daftar seluruh akun kasir & pemilik |
-| | `/api/users` | `POST` | ❌ | 🔒 | Tambah akun kasir / user baru |
-| | `/api/users/{id}` | `GET` | ❌ | 🔒 | Detail akun user |
-| | `/api/users/{id}` | `PUT` | ❌ | 🔒 | Edit data / password akun user |
-| | `/api/users/{id}` | `DELETE` | ❌ | 🔒 | Hapus akun user |
-| **Kategori** | `/api/kategori` | `GET` | ✅ | ✅ | Filter kategori di POS kasir |
-| | `/api/kategori/{id}` | `GET` | ✅ | ✅ | Detail kategori |
-| | `/api/kategori` | `POST` | ❌ | 🔒 | Tambah kategori baru |
-| | `/api/kategori/{id}` | `PUT` | ❌ | 🔒 | Ubah nama kategori |
-| | `/api/kategori/{id}` | `DELETE` | ❌ | 🔒 | Hapus kategori |
-| **Supplier** | `/api/supplier` | `GET` | ❌ | 🔒 | *(Pemilik Saja per 24 Sep 2026)* |
-| | `/api/supplier/{id}` | `GET` | ❌ | 🔒 | *(Pemilik Saja per 24 Sep 2026)* |
-| | `/api/supplier` | `POST` | ❌ | 🔒 | Tambah supplier baru |
-| | `/api/supplier/{id}` | `PUT` | ❌ | 🔒 | Ubah data supplier |
-| | `/api/supplier/{id}` | `DELETE` | ❌ | 🔒 | Hapus data supplier |
-| **Master Barang** | `/api/barang` | `GET` | ✅ | ✅ | Katalog produk & pencarian POS |
-| | `/api/barang/stok-menipis`| `GET` | ✅ | ✅ | Peringatan stok kritis |
-| | `/api/barang/{id}` | `GET` | ✅ | ✅ | Detail barang |
-| | `/api/barang` | `POST` | ❌ | 🔒 | Tambah produk & upload gambar |
-| | `/api/barang/{id}` | `POST` / `PUT`| ❌ | 🔒 | Update produk & ganti gambar |
-| | `/api/barang/{id}/gambar` | `DELETE` | ❌ | 🔒 | Hapus file gambar produk |
-| | `/api/barang/{id}` | `DELETE` | ❌ | 🔒 | Hapus data produk |
-| **Purchasing** | `/api/belanja` | `GET` | ❌ | 🔒 | Riwayat kulakan / pembelian |
-| | `/api/belanja` | `POST` | ❌ | 🔒 | Catat belanja (stok otomatis bertambah) |
-| | `/api/belanja/{id}` | `GET` | ❌ | 🔒 | Detail faktur belanja |
-| **Sales POS** | `/api/penjualan` | `GET` | ✅ | ✅ | Riwayat transaksi penjualan |
-| | `/api/penjualan` | `POST` | ✅ | ✅ | Checkout POS (stok otomatis berkurang) |
-| | `/api/penjualan/{id}` | `GET` | ✅ | ✅ | Detail transaksi nota |
-| | `/api/penjualan/{id}/cetak-struk` | `GET` | ✅ | ✅ | Download / cetak PDF thermal |
-| **Laporan** | `/api/laporan/dasbor` | `GET` | ❌ | 🔒 | Ringkasan omset & statistik |
-| | `/api/laporan/laba-rugi` | `GET` | ❌ | 🔒 | Perhitungan laba kotor & arus kas |
-
-*Keterangan: ✅ = Diizinkan | ❌ = Akses Ditolak (HTTP 403) | 🔒 = Dikhususkan untuk Pemilik*
+| Modul / Fitur | Endpoint URL | Method | Kasir | Admin | Super Admin | Publik |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
+| **Autentikasi** | `/login` | POST | Ya | Ya | Ya | Ya |
+| | `/logout` | POST | Ya | Ya | Ya | - |
+| | `/me` | GET | Ya | Ya | Ya | - |
+| | `/ubah-password` | POST | Ya | Ya | Ya | - |
+| **Katalog Publik** | `/public/produk` | GET | Ya | Ya | Ya | Ya |
+| | `/public/cek-stok` | POST | Ya | Ya | Ya | Ya |
+| | `/public/pesanan` | POST | Ya | Ya | Ya | Ya |
+| **Pengaturan Toko** | `/pengaturan` | GET | Ya | Ya | Ya | - |
+| | `/pengaturan` | POST | - | - | Ya | - |
+| **Manajemen User** | `/users` | GET, POST | - | - | Ya | - |
+| | `/users/{id}` | GET, PUT, DELETE | - | - | Ya | - |
+| **Kategori Barang** | `/kategori` | GET | Ya | Ya | Ya | - |
+| | `/kategori` | POST | - | Ya | Ya | - |
+| | `/kategori/{id}` | PUT, DELETE | - | Ya | Ya | - |
+| **Supplier** | `/supplier` | GET | - | Ya | Ya | - |
+| | `/supplier` | POST | - | Ya | Ya | - |
+| | `/supplier/{id}` | GET, PUT, DELETE | - | Ya | Ya | - |
+| **Master Barang** | `/barang` | GET | Ya | Ya | Ya | - |
+| | `/barang/{id}` | GET | Ya | Ya | Ya | - |
+| | `/barang` | POST | - | Ya | Ya | - |
+| | `/barang/{id}` | POST / PUT | - | Ya | Ya | - |
+| | `/barang/{id}` | DELETE | - | Ya | Ya | - |
+| | `/barang/barcode/{barcode}` | GET | Ya | Ya | Ya | - |
+| | `/barang/{id}/update-stok` | POST | - | Ya | Ya | - |
+| **Belanja / Kulakan**| `/belanja` | GET, POST | - | Ya | Ya | - |
+| | `/belanja/{id}` | GET, DELETE | - | Ya | Ya | - |
+| **POS / Penjualan** | `/penjualan` | GET, POST | Ya | Ya | Ya | - |
+| | `/penjualan/{id}` | GET | Ya | Ya | Ya | - |
+| | `/penjualan/faktur/{no_faktur}` | GET | Ya | Ya | Ya | - |
+| | `/penjualan/cetak-struk/{no_faktur}` | GET | Ya | Ya | Ya | Ya |
+| **Kelola Pesanan** | `/pesanan` | GET | - | Ya | Ya | - |
+| | `/pesanan/{id}` | GET | - | Ya | Ya | - |
+| | `/pesanan/{id}/status` | PUT | - | Ya | Ya | - |
+| | `/pesanan/{id}` | DELETE | - | Ya | Ya | - |
+| **Laporan & Dashboard**| `/laporan/dashboard` | GET | - | Ya | Ya | - |
+| | `/laporan/penjualan` | GET | - | Ya | Ya | - |
+| | `/laporan/belanja` | GET | - | Ya | Ya | - |
+| | `/laporan/stok-menipis` | GET | Ya | Ya | Ya | - |
+| | `/laporan/keuntungan` | GET | - | - | Ya | - |
 
 ---
 
 ## 5. Rincian API Endpoint
 
-### 5.1. Autentikasi & Profil Pengguna
+### 5.1 Auth & Profil
 
-#### [POST] `/api/login`
-Mengautentikasi akun dan mendapatkan token akses Bearer Sanctum.
-- **Request Body:**
+#### 1. Login Akun
+- **Endpoint**: `POST /api/login`
+- **Akses**: Publik
+- **Request Body**:
   ```json
   {
-    "email": "kasir@nurmart.com",
-    "password": "password123",
-    "device_name": "Flutter Android Kasir 1"
+    "username": "kasir1",
+    "password": "password123"
   }
   ```
-- **Response 200 OK:**
+- **Response (200 OK)**:
   ```json
   {
-    "status": true,
-    "message": "Login berhasil.",
+    "success": true,
+    "message": "Login berhasil",
     "data": {
       "user": {
         "id": 2,
-        "name": "Siti Aminah (Kasir)",
-        "email": "kasir@nurmart.com",
+        "name": "Siti Kasir",
+        "username": "kasir1",
         "role": "kasir",
-        "telepon": "08123456789",
-        "alamat": "Dusun Sukasari RT 01"
+        "is_active": true
       },
-      "token": "1|8A7g89...dF6h9",
-      "token_type": "Bearer"
+      "token": "1|NUrMartSecureTokenGeneratedKey..."
     }
   }
   ```
 
-#### [GET] `/api/profile`
-Mendapatkan informasi profil akun yang sedang login.
-- **Response 200 OK:**
+#### 2. Info Profil Login
+- **Endpoint**: `GET /api/me`
+- **Akses**: Kasir, Admin, Super Admin
+- **Response (200 OK)**:
   ```json
   {
-    "status": true,
-    "message": "Data profil berhasil diambil.",
-    "data": {
-      "id": 2,
-      "name": "Siti Aminah (Kasir)",
-      "email": "kasir@nurmart.com",
-      "role": "kasir",
-      "telepon": "08123456789",
-      "alamat": "Dusun Sukasari RT 01",
-      "created_at": "2026-09-24T06:05:00.000000Z"
-    }
-  }
-  ```
-
-#### [PUT] `/api/profile` *(Kasir & Pemilik)*
-Mengubah profil akun sendiri (Nama, Email, Telepon, Alamat, dan ganti Password opsional).
-- **Request Body:**
-  ```json
-  {
-    "name": "Siti Aminah",
-    "email": "kasir@nurmart.com",
-    "telepon": "0812-9876-5432",
-    "alamat": "Dusun Sukasari RT 01",
-    "password_lama": "password123",
-    "password_baru": "passwordBaru456"
-  }
-  ```
-- **Response 200 OK:**
-  ```json
-  {
-    "status": true,
-    "message": "Profil berhasil diperbarui.",
-    "data": {
-      "id": 2,
-      "name": "Siti Aminah",
-      "email": "kasir@nurmart.com",
-      "role": "kasir",
-      "telepon": "0812-9876-5432",
-      "alamat": "Dusun Sukasari RT 01"
-    }
-  }
-  ```
-
-#### [POST] `/api/refresh-token`
-Memperbarui token yang sedang aktif dan mencabut token lama.
-- **Response 200 OK:**
-  ```json
-  {
-    "status": true,
-    "message": "Token berhasil diperbarui (refreshed).",
-    "data": {
-      "token": "2|9Z6q21...kL4m8",
-      "token_type": "Bearer"
-    }
-  }
-  ```
-
-#### [POST] `/api/logout`
-Mencabut token sesi yang sedang aktif.
-- **Response 200 OK:**
-  ```json
-  {
-    "status": true,
-    "message": "Logout berhasil, sesi telah dihapus.",
-    "data": null
-  }
-  ```
-
----
-
-### 5.2. Pengaturan Toko & Kontak Struk
-
-#### [GET] `/api/pengaturan` *(Kasir & Pemilik)*
-Mengambil informasi toko, kontak, alamat, dan footer nota cetak struk.
-- **Response 200 OK:**
-  ```json
-  {
-    "status": true,
-    "message": "Data pengaturan toko berhasil diambil.",
+    "success": true,
+    "message": "Data profil ditemukan",
     "data": {
       "id": 1,
-      "nama_toko": "TOKO KELONTONG NURMART",
-      "slogan": "Sedia Sembako & Kebutuhan Rumah Tangga Terlengkap",
-      "no_telepon": "0812-3456-7890",
-      "alamat": "Jogodayoh RT 02, Sedia Sembako & Kebutuhan Rumah Tangga",
-      "footer_struk": "Barang yang sudah dibeli tidak dapat ditukar/dikembalikan. Terima kasih atas kunjungan Anda!",
-      "created_at": "2026-09-24T09:09:52.000000Z",
-      "updated_at": "2026-09-24T09:09:52.000000Z"
+      "name": "Administrator",
+      "username": "admin",
+      "role": "super_admin",
+      "is_active": true
     }
   }
   ```
 
-#### [PUT] `/api/pengaturan` *(Hanya Pemilik)*
-Memperbarui informasi toko, alamat, kontak, atau footer nota thermal struk.
-- **Request Body:**
+#### 3. Ganti Password Akun Sendiri
+- **Endpoint**: `POST /api/ubah-password`
+- **Akses**: Kasir, Admin, Super Admin
+- **Request Body**:
   ```json
   {
-    "nama_toko": "TOKO KELONTONG NURMART",
-    "slogan": "Pusat Grosir & Eceran Terlengkap",
-    "no_telepon": "0812-3456-7890",
-    "alamat": "Jl. Raya Jogodayoh RT 02 RW 01, Majalengka",
-    "footer_struk": "Barang yang sudah dibeli tidak dapat ditukar/dikembalikan. Terima kasih!"
+    "current_password": "password123",
+    "new_password": "newPassword321",
+    "new_password_confirmation": "newPassword321"
   }
   ```
-- **Response 200 OK:**
+- **Response (200 OK)**:
   ```json
   {
-    "status": true,
-    "message": "Pengaturan toko berhasil diperbarui.",
-    "data": { ... }
+    "success": true,
+    "message": "Password berhasil diubah."
+  }
+  ```
+
+#### 4. Logout Akun
+- **Endpoint**: `POST /api/logout`
+- **Akses**: Kasir, Admin, Super Admin
+- **Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Logout berhasil dan token telah dihapus."
   }
   ```
 
 ---
 
-### 5.3. Manajemen User & Akun Kasir (Pemilik)
+### 5.2 Pengaturan Toko
 
-#### [GET] `/api/users` *(Hanya Pemilik)*
-Mengambil daftar seluruh pengguna dan kasir yang terdaftar.
-- **Query Parameters (Opsional):**
-  - `role`: Filter `pemilik` atau `kasir`
-  - `q`: Pencarian nama, email, atau nomor telepon
-- **Response 200 OK:**
+#### 1. Ambil Pengaturan Toko
+- **Endpoint**: `GET /api/pengaturan`
+- **Akses**: Kasir, Admin, Super Admin
+- **Response (200 OK)**:
   ```json
   {
-    "status": true,
-    "message": "Daftar user berhasil diambil.",
-    "data": [
-      {
-        "id": 1,
-        "name": "H. Ahmad Nur (Pemilik)",
-        "email": "pemilik@nurmart.com",
-        "role": "pemilik",
-        "telepon": "081234567890",
-        "alamat": "Majalengka",
-        "created_at": "2026-09-24T06:05:00.000000Z"
-      },
-      {
-        "id": 2,
-        "name": "Siti Aminah (Kasir)",
-        "email": "kasir@nurmart.com",
-        "role": "kasir",
-        "telepon": "081298765432",
-        "alamat": "Dusun Sukasari RT 01",
-        "created_at": "2026-09-24T06:05:00.000000Z"
-      }
-    ]
+    "success": true,
+    "data": {
+      "nama_toko": "NURMART",
+      "alamat": "Jl. Raya Kalisat No. 12, Jember",
+      "no_telepon": "081234567890",
+      "pesan_footer_struk": "Terima kasih telah berbelanja di NURMART!",
+      "logo_url": "http://localhost:8000/storage/pengaturan/logo.png"
+    }
   }
   ```
 
-#### [POST] `/api/users` *(Hanya Pemilik)*
-Menambahkan akun pengguna atau kasir baru.
-- **Request Body:**
+#### 2. Update Pengaturan Toko
+- **Endpoint**: `POST /api/pengaturan`
+- **Akses**: Super Admin
+- **Content-Type**: `multipart/form-data`
+- **Form Data**:
+  - `nama_toko` (string, opsional)
+  - `alamat` (string, opsional)
+  - `no_telepon` (string, opsional)
+  - `pesan_footer_struk` (string, opsional)
+  - `logo` (file gambar: jpeg, png, jpg, max 2048 KB, opsional)
+
+---
+
+### 5.3 Manajemen Pengguna (User Management)
+
+> **Akses Khusus**: `super_admin`
+
+#### 1. Daftar Pengguna
+- **Endpoint**: `GET /api/users`
+- **Query Params**: `?search=&role=&is_active=`
+
+#### 2. Tambah Pengguna Baru
+- **Endpoint**: `POST /api/users`
+- **Request Body**:
   ```json
   {
-    "name": "Ahmad Dani",
-    "email": "dani@nurmart.com",
-    "password": "password123",
+    "name": "Ahmad Kasir",
+    "username": "ahmad_kasir",
+    "password": "PasswordKasir123",
     "role": "kasir",
-    "telepon": "085712345678",
-    "alamat": "Desa Maju RT 03"
+    "is_active": true
   }
   ```
 
-#### [GET] `/api/users/{id}` *(Hanya Pemilik)*
-Mengambil detail satu pengguna.
+#### 3. Update Pengguna
+- **Endpoint**: `PUT /api/users/{id}`
+- **Request Body**:
+  ```json
+  {
+    "name": "Ahmad Kasir Baru",
+    "username": "ahmad_kasir",
+    "role": "kasir",
+    "is_active": true,
+    "password": "opsional_diisi_jika_ganti"
+  }
+  ```
 
-#### [PUT] `/api/users/{id}` *(Hanya Pemilik)*
-Memperbarui data atau password akun user/kasir.
-
-#### [DELETE] `/api/users/{id}` *(Hanya Pemilik)*
-Menghapus akun pengguna. *(Catatan: Akun yang sedang login aktif atau memiliki relasi transaksi tidak dapat dihapus)*.
+#### 4. Hapus Pengguna
+- **Endpoint**: `DELETE /api/users/{id}`
 
 ---
 
-### 5.4. Kategori Produk
+### 5.4 Kategori Barang
 
-#### [GET] `/api/kategori` *(Kasir & Pemilik)*
-Mengambil daftar semua kategori produk. Digunakan oleh POS untuk tab/filter kategori barang.
-- **Response 200 OK:**
+#### 1. Daftar Kategori
+- **Endpoint**: `GET /api/kategori`
+- **Akses**: Kasir, Admin, Super Admin
+- **Query Params**: `?search=&per_page=`
+
+#### 2. Tambah Kategori
+- **Endpoint**: `POST /api/kategori`
+- **Akses**: Admin, Super Admin
+- **Request Body**:
   ```json
   {
-    "status": true,
-    "message": "Daftar kategori berhasil diambil.",
-    "data": [
-      {
-        "id": 1,
-        "nama_kategori": "Sembako",
-        "deskripsi": "Beras, Minyak, Gula, Tepung"
-      },
-      {
+    "nama_kategori": "Minuman Dingin",
+    "deskripsi": "Aneka minuman botol dan kaleng"
+  }
+  ```
+
+#### 3. Update Kategori
+- **Endpoint**: `PUT /api/kategori/{id}`
+- **Akses**: Admin, Super Admin
+- **Request Body**:
+  ```json
+  {
+    "nama_kategori": "Minuman Kemasan",
+    "deskripsi": "Aneka minuman botol, dus, dan kaleng"
+  }
+  ```
+
+#### 4. Hapus Kategori
+- **Endpoint**: `DELETE /api/kategori/{id}`
+- **Akses**: Admin, Super Admin
+
+---
+
+### 5.5 Supplier
+
+#### 1. Daftar Supplier
+- **Endpoint**: `GET /api/supplier`
+- **Akses**: Admin, Super Admin
+- **Query Params**:
+  - `search` (string, opsional): Cari berdasarkan nama supplier atau kontak
+  - `per_page` (integer, opsional, default: 15)
+
+#### 2. Tambah Supplier
+- **Endpoint**: `POST /api/supplier`
+- **Akses**: Admin, Super Admin
+- **Request Body**:
+  ```json
+  {
+    "nama_supplier": "PT Sumber Alfaria Distribusi",
+    "no_telepon": "081298765432",
+    "alamat": "Kawasan Industri Rungkut Surabaya"
+  }
+  ```
+
+#### 3. Detail Supplier
+- **Endpoint**: `GET /api/supplier/{id}`
+- **Akses**: Admin, Super Admin
+- **Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Data supplier berhasil diambil",
+    "data": {
+      "id": 1,
+      "nama_supplier": "PT Sumber Alfaria Distribusi",
+      "no_telepon": "081298765432",
+      "alamat": "Kawasan Industri Rungkut Surabaya",
+      "created_at": "2026-09-24T06:00:00.000000Z",
+      "updated_at": "2026-09-24T06:00:00.000000Z",
+      "belanjas": [
+        {
+          "id": 5,
+          "no_faktur_pembelian": "BEL-20260927-001",
+          "total_belanja": 1500000,
+          "tanggal_belanja": "2026-09-27"
+        }
+      ]
+    }
+  }
+  ```
+
+#### 4. Update Supplier
+- **Endpoint**: `PUT /api/supplier/{id}`
+- **Akses**: Admin, Super Admin
+- **Request Body**:
+  ```json
+  {
+    "nama_supplier": "PT Sumber Alfaria Distribusi Baru",
+    "no_telepon": "081298765432",
+    "alamat": "Jl. Ahmad Yani No. 50 Surabaya"
+  }
+  ```
+
+#### 5. Hapus Supplier
+- **Endpoint**: `DELETE /api/supplier/{id}`
+- **Akses**: Admin, Super Admin
+
+---
+
+### 5.6 Master Barang
+
+#### 1. Daftar Barang (Pagination, Filter & Pencarian)
+- **Endpoint**: `GET /api/barang`
+- **Akses**: Kasir, Admin, Super Admin
+- **Query Params**:
+  - `search` (string, opsional): Pencarian nama barang atau kode barcode
+  - `kategori_id` (integer, opsional): Filter berdasarkan ID kategori
+  - `stok_menipis` (boolean: 1/0, opsional): Hanya tampilkan barang yang `stok <= stok_minimum`
+  - `per_page` (integer, opsional, default: 15)
+
+#### 2. Detail Barang
+- **Endpoint**: `GET /api/barang/{id}`
+- **Akses**: Kasir, Admin, Super Admin
+
+#### 3. Cari Barang by Barcode
+- **Endpoint**: `GET /api/barang/barcode/{barcode}`
+- **Akses**: Kasir, Admin, Super Admin
+- **Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Barang ditemukan",
+    "data": {
+      "id": 12,
+      "kategori_id": 2,
+      "nama_barang": "Indomie Goreng Original 85g",
+      "barcode": "8998866200114",
+      "harga_beli": 2800,
+      "harga_jual": 3500,
+      "stok": 120,
+      "stok_minimum": 20,
+      "satuan": "pcs",
+      "gambar_url": "http://localhost:8000/storage/barang/indomie.png",
+      "kategori": {
         "id": 2,
-        "nama_kategori": "Minuman",
-        "deskripsi": "Air mineral, teh, kopi, jus"
+        "nama_kategori": "Makanan Instan"
       }
-    ]
+    }
   }
   ```
 
-#### [POST] `/api/kategori` *(Hanya Pemilik)*
-Menambah kategori baru.
-- **Request Body:** `{"nama_kategori": "Snack & Biskuit", "deskripsi": "Aneka makanan ringan"}`
+#### 4. Tambah Barang Baru
+- **Endpoint**: `POST /api/barang`
+- **Akses**: Admin, Super Admin
+- **Content-Type**: `multipart/form-data`
+- **Body Fields**:
+  - `kategori_id` (integer, required)
+  - `nama_barang` (string, required, max:255)
+  - `barcode` (string, nullable, unique)
+  - `harga_beli` (numeric, required, min:0)
+  - `harga_jual` (numeric, required, min:0)
+  - `stok` (integer, required, min:0)
+  - `stok_minimum` (integer, required, min:0)
+  - `satuan` (string, required, max:50, e.g., 'pcs', 'pack', 'kg', 'dus')
+  - `gambar` (file image: jpeg, png, jpg, max 2048 KB, opsional)
 
-#### [PUT] `/api/kategori/{id}` *(Hanya Pemilik)*
-Mengubah nama/deskripsi kategori.
+#### 5. Update Barang
+- **Endpoint**: `POST /api/barang/{id}` *(disarankan dengan `_method: PUT` jika mengirim file)* atau `PUT /api/barang/{id}`
+- **Akses**: Admin, Super Admin
 
-#### [DELETE] `/api/kategori/{id}` *(Hanya Pemilik)*
-Menghapus kategori (Hanya kategori tanpa relasi produk yang dapat dihapus).
+#### 6. Hapus Barang
+- **Endpoint**: `DELETE /api/barang/{id}`
+- **Akses**: Admin, Super Admin
+
+#### 7. Penyesuaian / Update Cepat Stok Barang
+- **Endpoint**: `POST /api/barang/{id}/update-stok`
+- **Akses**: Admin, Super Admin
+- **Request Body**:
+  ```json
+  {
+    "tipe": "tambah", // Pilihan: "tambah", "kurang", "set"
+    "jumlah": 50,
+    "keterangan": "Restock manual tambahan dari gudang samping"
+  }
+  ```
 
 ---
 
-### 5.5. Supplier (Khusus Pemilik)
+### 5.7 Transaksi Belanja / Kulakan (Restock)
 
-> [!WARNING]
-> Seluruh endpoint Supplier kini dibatasi **Hanya Pemilik** (`role:pemilik`). Akun kasir yang mencoba mengakses endpoint ini akan menerima respon **HTTP 403 Forbidden**.
-
-#### [GET] `/api/supplier` *(Hanya Pemilik)*
-Mengambil daftar supplier untuk keperluan kulakan / pembelian barang.
-- **Response 200 OK:**
+#### 1. Daftar Riwayat Belanja
+- **Endpoint**: `GET /api/belanja`
+- **Akses**: Admin, Super Admin
+- **Query Params**:
+  - `start_date` (string, YYYY-MM-DD, opsional)
+  - `end_date` (string, YYYY-MM-DD, opsional)
+  - `supplier_id` (integer, opsional)
+  - `per_page` (integer, opsional, default: 15)
+- **Response (200 OK)**:
   ```json
   {
-    "status": true,
-    "message": "Daftar supplier berhasil diambil.",
-    "data": [
-      {
-        "id": 1,
-        "nama_supplier": "PT Sumber Pangan Sejahtera",
-        "kontak_person": "Bpk. Hendra",
-        "telepon": "0812-3456-7890",
-        "alamat": "Kawasan Industri Cirebon"
-      }
-    ]
-  }
-  ```
-
-#### [POST] `/api/supplier` *(Hanya Pemilik)*
-Menambah data supplier baru.
-- **Request Body:**
-  ```json
-  {
-    "nama_supplier": "CV Maju Jaya Abadi",
-    "kontak_person": "Ibu Ratna",
-    "telepon": "0813-8899-7766",
-    "alamat": "Jl. Industri No. 45, Majalengka"
-  }
-  ```
-
-#### [PUT] `/api/supplier/{id}` *(Hanya Pemilik)*
-Mengubah data supplier.
-
-#### [DELETE] `/api/supplier/{id}` *(Hanya Pemilik)*
-Menghapus data supplier.
-
----
-
-### 5.6. Master Data Barang / Produk
-
-#### [GET] `/api/barang` *(Kasir & Pemilik)*
-Mendukung pagination, pencarian nama, barcode, atau SKU.
-- **Query Parameters:**
-  - `search` (opsional): cari berdasarkan nama / barcode / sku.
-  - `kategori_id` (opsional): filter berdasarkan ID kategori.
-  - `per_page` (opsional): default 15.
-  - `all` (opsional): isi `true` jika Flutter ingin memuat seluruh barang untuk penyimpanan offline / cache lokal.
-- **Response 200 OK:**
-  ```json
-  {
-    "status": true,
-    "message": "Daftar produk berhasil diambil.",
+    "success": true,
+    "message": "Data belanja berhasil diambil",
     "data": {
       "current_page": 1,
       "data": [
         {
           "id": 1,
-          "kode_sku": "BRG-0001",
-          "barcode": "8992345100012",
-          "nama_barang": "Beras Pandan Wangi 5kg",
-          "kategori_id": 1,
-          "harga_beli": 68000,
-          "harga_jual": 76000,
-          "stok": 25,
-          "satuan": "dus/karung",
-          "gambar_url": "http://localhost:8000/storage/produk/beras.webp",
-          "kategori": {
+          "supplier_id": 1,
+          "user_id": 1,
+          "no_faktur_pembelian": "FAK-SUPP-9921",
+          "total_belanja": 750000,
+          "tanggal_belanja": "2026-09-27",
+          "keterangan": "Kulakan mingguan distributor",
+          "supplier": {
             "id": 1,
-            "nama_kategori": "Sembako"
-          }
-        }
-      ],
-      "total": 5
-    }
-  }
-  ```
-
-#### [GET] `/api/barang/stok-menipis` *(Kasir & Pemilik)*
-Mengambil produk-produk yang stoknya sudah mencapai batas minimal.
-- **Query Parameters:** `threshold` (opsional, default 10).
-- **Response 200 OK:**
-  ```json
-  {
-    "status": true,
-    "message": "Daftar stok barang menipis berhasil diambil.",
-    "data": {
-      "threshold": 10,
-      "total_items": 1,
-      "items": [
-        {
-          "id": 4,
-          "kode_sku": "BRG-0004",
-          "nama_barang": "Teh Botol Sosro Kotak 250ml",
-          "stok": 4,
-          "satuan": "pcs"
+            "nama_supplier": "PT Sumber Alfaria Distribusi"
+          },
+          "user": {
+            "id": 1,
+            "name": "Administrator"
+          },
+          "items_count": 2
         }
       ]
     }
   }
   ```
 
-#### [POST] `/api/barang` *(Hanya Pemilik)*
-Menambah produk baru. Mendukung upload gambar file (`multipart/form-data`).
-- **Form Data Parameters:**
-  - `kode_sku` (string, required, unique)
-  - `barcode` (string, optional)
-  - `nama_barang` (string, required)
-  - `kategori_id` (integer, required)
-  - `harga_beli` (numeric, required)
-  - `harga_jual` (numeric, required)
-  - `stok` (integer, optional, default 0)
-  - `satuan` (string, required, contoh: `pcs`, `kg`, `dus`, `pack`)
-  - `gambar` (file image: jpg, jpeg, png, webp, max 2MB, optional)
-
-#### [POST / PUT] `/api/barang/{id}` *(Hanya Pemilik)*
-Memperbarui data produk. Jika mengunggah file gambar baru melalui Flutter, gunakan method `POST` dengan `multipart/form-data`.
-
-#### [DELETE] `/api/barang/{id}/gambar` *(Hanya Pemilik)*
-Menghapus file foto/gambar dari produk tanpa menghapus data barang.
-
-#### [DELETE] `/api/barang/{id}` *(Hanya Pemilik)*
-Menghapus produk dari database (beserta file gambarnya dari storage).
-
----
-
-### 5.7. Belanja Barang / Purchasing (Khusus Pemilik)
-
-Fitur ini digunakan saat pemilik toko membeli pasokan/kulakan dari supplier.
-Sistem secara otomatis **menambahkan stok barang** dan **mengupdate harga beli terbaru** pada database dalam satu transaksi aman (`DB::transaction`).
-
-#### [GET] `/api/belanja` *(Hanya Pemilik)*
-Mengambil riwayat transaksi belanja/kulakan ke supplier.
-
-#### [POST] `/api/belanja` *(Hanya Pemilik)*
-- **Request Body:**
+#### 2. Input Transaksi Belanja (Otomatis Tambah Stok & Update Harga Beli)
+- **Endpoint**: `POST /api/belanja`
+- **Akses**: Admin, Super Admin
+- **Request Body**:
   ```json
   {
     "supplier_id": 1,
-    "no_faktur_pembelian": "INV-SUP-2026-009",
-    "tanggal": "2026-09-24",
-    "catatan": "Kulakan sembako awal pekan",
+    "no_faktur_pembelian": "FAK-SUPP-9921", // opsional
+    "tanggal_belanja": "2026-09-27",
+    "keterangan": "Kulakan mingguan distributor",
     "items": [
       {
-        "barang_id": 1,
-        "jumlah": 20,
-        "harga_beli_satuan": 68000
+        "barang_id": 12,
+        "jumlah": 100,
+        "harga_beli": 2750
       },
       {
-        "barang_id": 3,
-        "jumlah": 30,
-        "harga_beli_satuan": 15000
+        "barang_id": 14,
+        "jumlah": 20,
+        "harga_beli": 12000
       }
     ]
   }
   ```
-- **Response 201 Created:**
-  ```json
-  {
-    "status": true,
-    "message": "Transaksi belanja berhasil disimpan dan stok barang otomatis bertambah.",
-    "data": {
-      "id": 1,
-      "no_faktur_pembelian": "PB-20260924-0001",
-      "supplier_id": 1,
-      "user_id": 1,
-      "tanggal": "2026-09-24",
-      "total_belanja": 1810000,
-      "catatan": "Kulakan sembako awal pekan",
-      "supplier": {
-        "id": 1,
-        "nama_supplier": "PT Sumber Pangan Sejahtera"
-      },
-      "details": [
-        {
-          "id": 1,
-          "barang_id": 1,
-          "jumlah": 20,
-          "harga_beli_satuan": 68000,
-          "subtotal": 1360000,
-          "barang": {
-            "id": 1,
-            "nama_barang": "Beras Pandan Wangi 5kg",
-            "stok": 45
-          }
-        }
-      ]
-    }
-  }
-  ```
+
+#### 3. Detail Transaksi Belanja
+- **Endpoint**: `GET /api/belanja/{id}`
+- **Akses**: Admin, Super Admin
+
+#### 4. Batalkan / Hapus Transaksi Belanja
+- **Endpoint**: `DELETE /api/belanja/{id}`
+- **Akses**: Admin, Super Admin
+- *(Catatan: Menghapus data belanja otomatis mengurangi kembali stok barang terkait)*
 
 ---
 
-### 5.8. POS / Kasir & Penjualan (Sales)
+### 5.8 Transaksi Kasir / POS (Penjualan)
 
-Fitur ini digunakan oleh kasir dan pemilik untuk melayani transaksi penjualan kasir di toko.
-
-#### [GET] `/api/penjualan` *(Kasir & Pemilik)*
-Mengambil riwayat transaksi penjualan kasir (mendukung filter tanggal dan pagination).
-
-#### [POST] `/api/penjualan` *(Kasir & Pemilik)*
-- **Fitur Otomatis:**
-  1. Validasi kecukupan stok secara atomik (`lockForUpdate`).
-  2. Jika stok tidak mencukupi, transaksi ditolak dan mengembalikan HTTP 422 beserta nama produk yang kurang.
-  3. Memotong stok barang secara otomatis.
-  4. Menghitung kembalian berdasarkan `jumlah_bayar - total_belanja`.
-
-- **Request Body:**
+#### 1. Input Transaksi Penjualan Baru
+- **Endpoint**: `POST /api/penjualan`
+- **Akses**: Kasir, Admin, Super Admin
+- **Request Body**:
   ```json
   {
-    "metode_pembayaran": "tunai",
-    "jumlah_bayar": 100000,
+    "metode_pembayaran": "tunai", // Pilihan: "tunai", "qris", "transfer"
+    "bayar": 50000,
+    "diskon": 0,
+    "catatan": "Pelanggan umum",
     "items": [
       {
-        "barang_id": 1,
-        "jumlah": 1,
-        "harga_jual_satuan": 76000
+        "barang_id": 12,
+        "jumlah": 4,
+        "harga_satuan": 3500,
+        "diskon": 0
       },
       {
-        "barang_id": 4,
+        "barang_id": 14,
         "jumlah": 2,
-        "harga_jual_satuan": 4000
+        "harga_satuan": 15000,
+        "diskon": 1000
       }
     ]
   }
   ```
-- **Response 201 Created:**
+- **Response (201 Created)**:
   ```json
   {
-    "status": true,
-    "message": "Transaksi penjualan berhasil disimpan dan stok otomatis dipotong.",
+    "success": true,
+    "message": "Transaksi penjualan berhasil disimpan",
     "data": {
-      "id": 1,
-      "no_nota": "PJ-20260924-0001",
-      "tanggal": "2026-09-24T13:10:00.000000Z",
-      "kasir_id": 2,
-      "total_belanja": 84000,
-      "jumlah_bayar": 100000,
-      "kembalian": 16000,
+      "id": 89,
+      "no_faktur": "FK-20260927-0001",
+      "user_id": 2,
+      "tanggal": "2026-09-27T10:30:15.000000Z",
+      "total_kotor": 44000,
+      "diskon": 1000,
+      "total_bersih": 43000,
+      "bayar": 50000,
+      "kembalian": 7000,
       "metode_pembayaran": "tunai",
-      "kasir": {
+      "catatan": "Pelanggan umum",
+      "user": {
         "id": 2,
-        "name": "Siti Aminah (Kasir)"
+        "name": "Siti Kasir"
       },
-      "details": [
+      "items": [
         {
-          "id": 1,
-          "barang_id": 1,
-          "jumlah": 1,
-          "harga_jual_satuan": 76000,
-          "subtotal": 76000,
-          "barang": {
-            "id": 1,
-            "nama_barang": "Beras Pandan Wangi 5kg"
-          }
+          "id": 150,
+          "barang_id": 12,
+          "nama_barang": "Indomie Goreng Original 85g",
+          "harga_beli": 2750,
+          "harga_satuan": 3500,
+          "jumlah": 4,
+          "diskon": 0,
+          "subtotal": 14000
         },
         {
-          "id": 2,
-          "barang_id": 4,
+          "id": 151,
+          "barang_id": 14,
+          "nama_barang": "Minyak Goreng Bimoli 1L",
+          "harga_beli": 12000,
+          "harga_satuan": 15000,
           "jumlah": 2,
-          "harga_jual_satuan": 4000,
-          "subtotal": 8000,
-          "barang": {
-            "id": 4,
-            "nama_barang": "Teh Botol Sosro Kotak 250ml"
+          "diskon": 1000,
+          "subtotal": 29000
+        }
+      ]
+    }
+  }
+  ```
+
+#### 2. Daftar Riwayat Penjualan
+- **Endpoint**: `GET /api/penjualan`
+- **Akses**: Kasir, Admin, Super Admin
+- **Query Params**:
+  - `start_date` (YYYY-MM-DD, opsional)
+  - `end_date` (YYYY-MM-DD, opsional)
+  - `user_id` (integer, opsional - filter kasir tertentu)
+  - `metode_pembayaran` (string, opsional)
+  - `per_page` (integer, opsional, default: 15)
+
+#### 3. Detail Penjualan by ID
+- **Endpoint**: `GET /api/penjualan/{id}`
+- **Akses**: Kasir, Admin, Super Admin
+
+#### 4. Detail Penjualan by Nomor Faktur
+- **Endpoint**: `GET /api/penjualan/faktur/{no_faktur}`
+- **Akses**: Kasir, Admin, Super Admin
+
+#### 5. Cetak / Unduh File Struk PDF
+- **Endpoint**: `GET /penjualan/cetak-struk/{no_faktur}` *(Web Route)* atau `GET /api/penjualan/cetak-struk/{no_faktur}`
+- **Akses**: Publik / Kasir / Admin
+- **Response**: Stream file PDF (format kertas struk thermal 58mm/80mm)
+
+---
+
+### 5.9 Modul Katalog & Pemesanan Publik (Customer Online Order)
+
+> **Catatan**: Endpoint di bawah ini menggunakan prefix `/public/` dan tidak memerlukan token autentikasi (*No Auth Required*).
+
+#### 1. Katalog Produk Publik
+- **Endpoint**: `GET /api/public/produk`
+- **Akses**: Publik
+- **Query Params**:
+  - `kategori_id` (integer, opsional): Filter berdasarkan ID kategori
+  - `search` (string, opsional): Cari nama barang atau barcode
+  - `per_page` (integer, opsional, default: 15)
+- **Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Katalog produk berhasil diambil",
+    "data": {
+      "current_page": 1,
+      "data": [
+        {
+          "id": 12,
+          "kategori_id": 2,
+          "nama_barang": "Indomie Goreng Original 85g",
+          "barcode": "8998866200114",
+          "harga_jual": 3500,
+          "stok": 120,
+          "satuan": "pcs",
+          "gambar_url": "http://localhost:8000/storage/barang/indomie.png",
+          "kategori": {
+            "id": 2,
+            "nama_kategori": "Makanan Instan"
           }
         }
       ]
@@ -664,287 +671,407 @@ Mengambil riwayat transaksi penjualan kasir (mendukung filter tanggal dan pagina
   }
   ```
 
-#### [GET] `/api/penjualan/{id}/cetak-struk` *(Publik / Kasir / Pemilik)*
-Menghasilkan dokumen struk belanja berformat **PDF** yang siap di-stream atau di-download langsung oleh Flutter / printer thermal.
-- **Ukuran Kertas:** Disesuaikan untuk printer thermal roll kasir (Lebar 80mm / 58mm).
-- **Header Response:**
-  ```http
-  Content-Type: application/pdf
-  Content-Disposition: inline; filename="struk_PJ-20260924-0001.pdf"
+#### 2. Cek Validasi Ketersediaan Stok Real-Time
+- **Endpoint**: `POST /api/public/cek-stok`
+- **Akses**: Publik
+- **Request Body**:
+  ```json
+  {
+    "items": [
+      { "barang_id": 12, "jumlah": 5 },
+      { "barang_id": 14, "jumlah": 10 }
+    ]
+  }
+  ```
+- **Response Jika Stok Mencukupi (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "tersedia": true,
+    "items": [
+      {
+        "barang_id": 12,
+        "nama_barang": "Indomie Goreng Original 85g",
+        "stok_tersedia": 120,
+        "jumlah_pesan": 5,
+        "status": "tersedia"
+      }
+    ]
+  }
+  ```
+- **Response Jika Ada Stok Tidak Cukup (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "tersedia": false,
+    "message": "Beberapa item melebihi stok yang tersedia",
+    "items": [
+      {
+        "barang_id": 14,
+        "nama_barang": "Minyak Goreng Bimoli 1L",
+        "stok_tersedia": 3,
+        "jumlah_pesan": 10,
+        "status": "kurang"
+      }
+    ]
+  }
+  ```
+
+#### 3. Kirim Pemesanan Pelanggan
+- **Endpoint**: `POST /api/public/pesanan`
+- **Akses**: Publik
+- **Request Body**:
+  ```json
+  {
+    "nama_pemesan": "Budi Santoso",
+    "no_telepon": "081234567890",
+    "alamat": "Jl. Mawar No. 10, RT 02 RW 01, Jember",
+    "catatan": "Tolong kirim sebelum jam 12 siang",
+    "items": [
+      {
+        "barang_id": 12,
+        "jumlah": 5
+      },
+      {
+        "barang_id": 14,
+        "jumlah": 2
+      }
+    ]
+  }
+  ```
+- **Response (201 Created)**:
+  ```json
+  {
+    "success": true,
+    "message": "Pesanan berhasil dibuat. Kami akan segera memprosesnya!",
+    "data": {
+      "id": 15,
+      "kode_pesanan": "ORD-20260927-0015",
+      "nama_pemesan": "Budi Santoso",
+      "no_telepon": "081234567890",
+      "alamat": "Jl. Mawar No. 10, RT 02 RW 01, Jember",
+      "total_harga": 47500,
+      "status": "menunggu",
+      "catatan": "Tolong kirim sebelum jam 12 siang",
+      "created_at": "2026-09-27T11:00:00.000000Z",
+      "items": [
+        {
+          "id": 30,
+          "barang_id": 12,
+          "nama_barang": "Indomie Goreng Original 85g",
+          "harga_satuan": 3500,
+          "jumlah": 5,
+          "subtotal": 17500
+        },
+        {
+          "id": 31,
+          "barang_id": 14,
+          "nama_barang": "Minyak Goreng Bimoli 1L",
+          "harga_satuan": 15000,
+          "jumlah": 2,
+          "subtotal": 30000
+        }
+      ]
+    }
+  }
   ```
 
 ---
 
-### 5.9. Laporan & Dasbor Keuangan (Khusus Pemilik)
+### 5.10 Manajemen Pesanan (Admin / Super Admin)
 
-#### [GET] `/api/laporan/dasbor` *(Hanya Pemilik)*
-Menyajikan ringkasan kinerja toko secara cepat untuk dasbor pemilik toko.
-- **Response 200 OK:**
+#### 1. Daftar Pesanan Masuk
+- **Endpoint**: `GET /api/pesanan`
+- **Akses**: Admin, Super Admin
+- **Query Params**:
+  - `status` (string, opsional): Filter status: `menunggu`, `diproses`, `selesai`, `dibatalkan`
+  - `start_date` (string, YYYY-MM-DD, opsional)
+  - `end_date` (string, YYYY-MM-DD, opsional)
+  - `per_page` (integer, opsional, default: 15)
+- **Response (200 OK)**:
   ```json
   {
-    "status": true,
+    "success": true,
+    "message": "Data pesanan berhasil diambil",
+    "data": {
+      "current_page": 1,
+      "data": [
+        {
+          "id": 15,
+          "kode_pesanan": "ORD-20260927-0015",
+          "nama_pemesan": "Budi Santoso",
+          "no_telepon": "081234567890",
+          "total_harga": 47500,
+          "status": "menunggu",
+          "created_at": "2026-09-27T11:00:00.000000Z",
+          "items_count": 2
+        }
+      ]
+    }
+  }
+  ```
+
+#### 2. Detail Pesanan
+- **Endpoint**: `GET /api/pesanan/{id}`
+- **Akses**: Admin, Super Admin
+- **Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Detail pesanan ditemukan",
+    "data": {
+      "id": 15,
+      "kode_pesanan": "ORD-20260927-0015",
+      "nama_pemesan": "Budi Santoso",
+      "no_telepon": "081234567890",
+      "alamat": "Jl. Mawar No. 10, RT 02 RW 01, Jember",
+      "total_harga": 47500,
+      "status": "menunggu",
+      "catatan": "Tolong kirim sebelum jam 12 siang",
+      "items": [
+        {
+          "id": 30,
+          "barang_id": 12,
+          "nama_barang": "Indomie Goreng Original 85g",
+          "harga_satuan": 3500,
+          "jumlah": 5,
+          "subtotal": 17500
+        }
+      ]
+    }
+  }
+  ```
+
+#### 3. Update Status Pesanan
+- **Endpoint**: `PUT /api/pesanan/{id}/status`
+- **Akses**: Admin, Super Admin
+- **Request Body**:
+  ```json
+  {
+    "status": "diproses" // Pilihan: "menunggu", "diproses", "selesai", "dibatalkan"
+  }
+  ```
+- **Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Status pesanan berhasil diubah menjadi diproses.",
+    "data": {
+      "id": 15,
+      "kode_pesanan": "ORD-20260927-0015",
+      "status": "diproses"
+    }
+  }
+  ```
+  *(Catatan: Saat status diubah menjadi `selesai`, sistem secara otomatis memotong stok barang dan mencatatnya ke rekap laporan penjualan)*
+
+#### 4. Hapus Pesanan
+- **Endpoint**: `DELETE /api/pesanan/{id}`
+- **Akses**: Admin, Super Admin
+- **Response (200 OK)**:
+  ```json
+  {
+    "success": true,
+    "message": "Pesanan berhasil dihapus."
+  }
+  ```
+
+---
+
+### 5.11 Laporan & Analitik Dasbor
+
+#### 1. Ringkasan Dasbor (Statistik Real-Time)
+- **Endpoint**: `GET /api/laporan/dasbor`
+- **Akses**: Admin, Super Admin / Pemilik
+- **Response (200 OK)**:
+  ```json
+  {
+    "success": true,
     "message": "Data ringkasan dasbor berhasil dimuat.",
     "data": {
       "hari_ini": {
-        "tanggal": "2026-09-24",
-        "total_omset": 84000,
-        "total_transaksi": 1
+        "tanggal": "2026-09-27",
+        "total_omset": 159000,
+        "total_transaksi": 2
       },
       "bulan_ini": {
         "bulan": "September 2026",
-        "total_omset": 84000,
-        "total_transaksi": 1,
-        "total_keuntungan_margin": 10000
+        "total_omset": 320000,
+        "total_transaksi": 6,
+        "total_keuntungan_margin": 38500
       },
       "inventaris": {
-        "total_produk": 5,
-        "total_stok_menipis": 1,
-        "daftar_stok_menipis": [
-          {
-            "id": 4,
-            "kode_sku": "BRG-0004",
-            "nama_barang": "Teh Botol Sosro Kotak 250ml",
-            "stok": 2,
-            "satuan": "pcs"
-          }
-        ]
+        "total_produk": 13,
+        "total_stok_fisik": 156,
+        "total_modal_barang": 485000,
+        "total_stok_menipis": 13,
+        "daftar_stok_menipis": [ ... ]
       }
     }
   }
   ```
 
-#### [GET] `/api/laporan/laba-rugi` *(Hanya Pemilik)*
-Menghasilkan laporan laba rugi dengan membandingkan Omset Penjualan, HPP (Harga Pokok Penjualan), dan Pembelian Barang Masuk.
-- **Query Parameters:**
-  - `start_date` (opsional, format: `YYYY-MM-DD`, default: tanggal 1 bulan berjalan).
-  - `end_date` (opsional, format: `YYYY-MM-DD`, default: akhir bulan berjalan).
-- **Response 200 OK:**
+#### 2. Laporan Penjualan (Filter Periode & Ekspor)
+- **Endpoint**: `GET /api/laporan/penjualan`
+- **Akses**: Admin, Super Admin
+- **Query Params**:
+  - `start_date` (YYYY-MM-DD, default: awal bulan ini)
+  - `end_date` (YYYY-MM-DD, default: hari ini)
+  - `user_id` (integer, opsional)
+
+#### 3. Laporan Belanja / Pengadaan
+- **Endpoint**: `GET /api/laporan/belanja`
+- **Akses**: Admin, Super Admin
+- **Query Params**: `?start_date=&end_date=&supplier_id=`
+
+#### 4. Laporan Stok Menipis (Alert Inventaris)
+- **Endpoint**: `GET /api/laporan/stok-menipis`
+- **Akses**: Kasir, Admin, Super Admin
+
+#### 5. Laporan Laba Bersih / Keuntungan (HPP vs Harga Jual)
+- **Endpoint**: `GET /api/laporan/keuntungan`
+- **Akses**: Super Admin
+- **Query Params**: `?start_date=&end_date=`
+- **Response (200 OK)**:
   ```json
   {
-    "status": true,
-    "message": "Laporan laba rugi berhasil diambil.",
+    "success": true,
     "data": {
       "periode": {
         "start_date": "2026-09-01",
-        "end_date": "2026-09-30"
+        "end_date": "2026-09-27"
       },
-      "pendapatan_penjualan": {
-        "total_penjualan": 84000,
-        "metode_tunai": 84000,
-        "metode_qris": 0
-      },
-      "pengeluaran_dan_hpp": {
-        "total_belanja_supplier": 1810000,
-        "hpp_barang_terjual": 74000
-      },
-      "laba_rugi": {
-        "laba_kotor_penjualan": 10000,
-        "arus_kas_operasional": -1726000
-      }
+      "total_omset": 68500000,
+      "total_hpp_pokok": 54200000,
+      "total_diskon_diberikan": 350000,
+      "laba_kotor": 13950000
     }
   }
   ```
 
 ---
 
-## 6. Contoh Implementasi di Flutter (Dart)
+## 6. Contoh Implementasi Klien (Flutter / Dart)
 
-### 1. HTTP Service Client (Dio / http)
+Contoh service Flutter untuk mengintegrasikan autentikasi, transaksi POS, dan katalog pemesanan online:
+
 ```dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // Ganti URL sesuai lingkungan (10.0.2.2 untuk Android Emulator)
   static const String baseUrl = 'http://10.0.2.2:8000/api';
-  String? _authToken;
-  String? _userRole;
+  String? _token;
 
-  void setAuth(String token, String role) {
-    _authToken = token;
-    _userRole = role;
+  void setToken(String token) {
+    _token = token;
   }
 
-  bool get isKasir => _userRole == 'kasir';
-  bool get isPemilik => _userRole == 'pemilik';
-
   Map<String, String> get _headers => {
-    'Accept': 'application/json',
     'Content-Type': 'application/json',
-    if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+    'Accept': 'application/json',
+    if (_token != null) 'Authorization': 'Bearer $_token',
   };
 
   // 1. Login
-  Future<Map<String, dynamic>> login(String email, String password) async {
+  Future<Map<String, dynamic>> login(String username, String password) async {
     final response = await http.post(
       Uri.parse('$baseUrl/login'),
-      headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'email': email,
-        'password': password,
-        'device_name': 'Flutter Mobile App',
-      }),
+      headers: _headers,
+      body: jsonEncode({'username': username, 'password': password}),
     );
-
     final data = jsonDecode(response.body);
-    if (response.statusCode == 200 && data['status'] == true) {
-      setAuth(data['data']['token'], data['data']['user']['role']);
+    if (response.statusCode == 200 && data['success'] == true) {
+      setToken(data['data']['token']);
     }
     return data;
   }
 
-  // 2. Update Profil Pengguna
-  Future<Map<String, dynamic>> updateProfile({
-    required String name,
-    required String email,
-    String? telepon,
-    String? alamat,
-    String? passwordLama,
-    String? passwordBaru,
-  }) async {
-    final response = await http.put(
-      Uri.parse('$baseUrl/profile'),
+  // 2. Cari Barang by Barcode (POS Scanner)
+  Future<Map<String, dynamic>> scanBarcode(String barcode) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/barang/barcode/$barcode'),
       headers: _headers,
-      body: jsonEncode({
-        'name': name,
-        'email': email,
-        if (telepon != null) 'telepon': telepon,
-        if (alamat != null) 'alamat': alamat,
-        if (passwordLama != null) 'password_lama': passwordLama,
-        if (passwordBaru != null) 'password_baru': passwordBaru,
-      }),
     );
     return jsonDecode(response.body);
   }
 
-  // 3. Transaksi Kasir POS (Tersedia untuk Kasir & Pemilik)
-  Future<Map<String, dynamic>> checkoutPenjualan({
-    required String metodeBayar,
-    required double jumlahBayar,
+  // 3. Simpan Transaksi Penjualan (Kasir)
+  Future<Map<String, dynamic>> submitPenjualan({
+    required String metodePembayaran,
+    required double bayar,
+    required double diskon,
     required List<Map<String, dynamic>> items,
   }) async {
     final response = await http.post(
       Uri.parse('$baseUrl/penjualan'),
       headers: _headers,
       body: jsonEncode({
-        'metode_pembayaran': metodeBayar,
-        'jumlah_bayar': jumlahBayar,
+        'metode_pembayaran': metodePembayaran,
+        'bayar': bayar,
+        'diskon': diskon,
         'items': items,
       }),
     );
+    return jsonDecode(response.body);
+  }
 
+  // 4. Kirim Pesanan Online (Katalog Publik / Customer)
+  Future<Map<String, dynamic>> kirimPesananPublik({
+    required String namaPemesan,
+    required String noTelepon,
+    required String alamat,
+    String? catatan,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/public/pesanan'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        'nama_pemesan': namaPemesan,
+        'no_telepon': noTelepon,
+        'alamat': alamat,
+        'catatan': catatan,
+        'items': items,
+      }),
+    );
     return jsonDecode(response.body);
   }
 }
 ```
 
-### 2. Menampilkan & Mencetak PDF Struk di Flutter
-Untuk mendownload atau mencetak struk kasir di Flutter, gunakan paket `path_provider` dan kirim ke printer thermal bluetooth:
-```dart
-import 'dart:io';
-import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
+---
 
-Future<File> downloadStrukPdf(int penjualanId, String token) async {
-  final url = Uri.parse('http://10.0.2.2:8000/api/penjualan/$penjualanId/cetak-struk');
-  
-  final response = await http.get(
-    url,
-    headers: {
-      'Authorization': 'Bearer $token',
-      'Accept': 'application/pdf',
-    },
-  );
+## 7. Changelog & Versi API
 
-  final dir = await getTemporaryDirectory();
-  final file = File('${dir.path}/struk_$penjualanId.pdf');
-  await file.writeAsBytes(response.bodyBytes);
-  return file;
-}
-```
+| Versi | Tanggal Rilis | Catatan Pembaruan |
+| :---: | :---: | :--- |
+| **v1.0.0** | 24 September 2026 | Inisialisasi Backend: Auth Sanctum, Master Barang, Kategori, Supplier, Belanja, Penjualan POS, dan Cetak Struk PDF. |
+| **v1.1.0** | 25 September 2026 | Penambahan Hak Akses RBAC 3-Level (`super_admin`, `admin`, `kasir`), Laporan Laba/Rugi, dan Dashboard Analytics. |
+| **v1.2.0** | 27 September 2026 | Penambahan Katalog Publik (`/public/produk`, `/public/cek-stok`, `/public/pesanan`) dan Modul Manajemen Pesanan Masuk Admin (`/pesanan`). |
 
 ---
 
-## 7. Changelog Pembaruan Hak Akses & Fitur
+## 8. Troubleshooting & Masalah Umum
 
-| Versi / Tanggal | Modul | Perubahan |
-| :--- | :--- | :--- |
-| **27 Sep 2026** | **Pemesanan Publik & Cek Pesanan** | Penambahan halaman pemesanan umum (`/pesan` & `/order`), API public (`/api/public/produk`, `/api/public/cek-stok`, `/api/public/pesanan`), tab Cek Pesanan di dashboard admin, pemotongan stok otomatis saat pesanan masuk, dan pengembalian stok otomatis saat pesanan dibatalkan. |
-| **24 Sep 2026** | **Web Dashboard** | Hak akses role `kasir` dibatasi hanya melihat tab **Kasir POS**. Tab Navigasi Dasbor, Master Data, Belanja, dan Laporan disembunyikan. |
-| **24 Sep 2026** | **API Supplier** | Endpoint `GET /api/supplier` & `GET /api/supplier/{id}` dipindahkan dari grup kasir ke **Hanya Pemilik** (`role:pemilik`). |
-| **24 Sep 2026** | **API Profil & Toko** | Penambahan endpoint `PUT /api/profile` (telepon, alamat, password) dan `GET|PUT /api/pengaturan` (pengaturan toko). |
-| **24 Sep 2026** | **API User** | Penambahan endpoint CRUD `/api/users` khusus pemilik untuk manajemen akun kasir. |
-| **24 Sep 2026** | **API Barang** | Penambahan endpoint `DELETE /api/barang/{id}/gambar` untuk menghapus foto produk saja. |
-
----
-
-## 8. Modul Pemesanan Online (Publik & Admin)
-
-### 1. Ambil Katalog Produk Publik (Tanpa Login)
-`GET /api/public/produk`
-
-**Query Parameters:**
-- `search` (opsional): cari nama, SKU, atau kategori.
-- `kategori_id` (opsional): filter kategori produk.
-- `sort_by` (opsional): `nama_barang`, `harga_termurah`, `harga_termahal`, `stok_terbanyak`.
-- `all` (opsional, boolean): jika `1` mengembalikan semua list tanpa paginate.
-
-### 2. Cek Ketersediaan Stok Realtime
-`POST /api/public/cek-stok`
-
-**Request Body:**
-```json
-{
-  "barang_id": 1,
-  "jumlah": 3
-}
-```
-
-### 3. Kirim Pesanan Baru (Publik)
-`POST /api/public/pesanan`
-
-> *Catatan:* Stok produk **otomatis berkurang** seketika setelah pesanan divalidasi.
-
-**Request Body:**
-```json
-{
-  "nama_pemesan": "Ibu Siti Nurhaliza",
-  "no_telepon": "081234567890",
-  "alamat": "Jl. Melati No. 45",
-  "catatan": "Tolong kirim sebelum jam 17:00",
-  "items": [
-    {
-      "barang_id": 1,
-      "jumlah": 2
-    }
-  ]
-}
-```
-
-### 4. Kelola Pesanan di Admin / Kasir (Sanctum Auth)
-- `GET /api/pesanan` : Mengambil daftar pesanan beserta ringkasan status (`menunggu`, `diproses`, `selesai`, `dibatalkan`).
-- `GET /api/pesanan/{id}` : Mengambil rincian pesanan dan barang yang dipesan.
-- `PUT /api/pesanan/{id}/status` : Memperbarui status pesanan (`status`: `menunggu|diproses|selesai|dibatalkan`, `catatan_admin`).
-  > **Fitur Pembatalan:** Jika status diubah menjadi `dibatalkan`, sistem **secara otomatis mengembalikan / menambahkan kembali stok** semua barang dalam pesanan tersebut.
-- `DELETE /api/pesanan/{id}` : Menghapus data pesanan (stok dikembalikan jika status sebelumnya belum dibatalkan).
-
----
-
-## 8. Pemecahan Masalah (Troubleshooting)
-
-1. **Error: `Connection refused` pada Flutter:**
-   - Jika menggunakan emulator Android, gunakan host `10.0.2.2` bukan `localhost`.
-   - Pastikan server dijalankan dengan:
+1. **`Unauthenticated (401)` pada Postman / Mobile App**:
+   - Pastikan header `Authorization: Bearer <token>` disertakan pada setiap request yang membutuhkan autentikasi.
+   - Pastikan header `Accept: application/json` selalu dikirim agar Laravel merespon dalam format JSON, bukan redirect HTML.
+2. **`Error 500: Database Connection Refused`**:
+   - Pastikan MySQL/MariaDB aktif (misalnya melalui Laragon / XAMPP).
+   - Periksa konfigurasi kredensial pada file `.env` server (`DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`).
+3. **Gambar Produk / Logo Tidak Muncul (404 Not Found)**:
+   - Jalankan perintah symlink storage di terminal root server:
      ```bash
-     php artisan serve --host=0.0.0.0 --port=8000
+     php artisan storage:link
      ```
-   - Pastikan firewall Windows mengizinkan port `8000`.
-
-2. **Error 403 Forbidden (Akses Ditolak):**
-   - Terjadi saat user dengan peran `kasir` mencoba mengakses route yang dikhususkan untuk `pemilik` (seperti supplier, belanja, laporan laba rugi, manajemen user, atau pengaturan toko). Login menggunakan akun pemilik.
-
-3. **Kasir Mengalami Error saat Akses Supplier di Flutter:**
-   - Sesuai kebijakan terbaru per 24 Sep 2026, akun kasir tidak diizinkan membaca data supplier. Pastikan aplikasi Flutter menyembunyikan menu supplier dari pengguna bertipe `kasir`.
-
-4. **Error 422 Unprocessable Entity:**
-   - Periksa key `errors` pada respon JSON untuk melihat field validasi yang tidak sesuai (misal: stok tidak mencukupi, uang bayar kurang, atau SKU duplikat).
+4. **CORS Error pada Akses Browser / Web Frontend**:
+   - Pastikan konfigurasi `config/cors.php` telah menyertakan origin klien atau diatur `allowed_origins => ['*']` untuk tahap pengembangan.
+5. **Pemesanan Gagal: Stok Kurang Saat Checkout**:
+   - Pelanggan mencoba memesan jumlah yang melebihi ketersediaan `stok` barang di database.
+   - Gunakan endpoint `POST /api/public/cek-stok` sebelum submit formulir pemesanan untuk validasi dini di aplikasi klien.
+6. **Field Supplier Tidak Valid**:
+   - Pastikan menggunakan nama field `no_telepon` (bukan `telepon`) saat menambah atau mengubah data supplier.
