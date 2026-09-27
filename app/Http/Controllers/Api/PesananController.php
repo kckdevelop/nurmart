@@ -31,10 +31,8 @@ class PesananController extends Controller
     {
         $query = Barang::with('kategori');
 
-        // Hanya produk dengan stok > 0 kecuali jika diminta semua
-        if (!$request->boolean('include_out_of_stock', false)) {
-            $query->where('stok', '>', 0);
-        }
+        // Hanya produk dengan stok > 0 yang ditampilkan kepada pelanggan
+        $query->where('stok', '>', 0);
 
         // Filter pencarian
         if ($request->filled('search')) {

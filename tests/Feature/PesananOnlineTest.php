@@ -44,19 +44,40 @@ class PesananOnlineTest extends TestCase
 
     public function test_halaman_pesan_publik_bisa_diakses(): void
     {
+        $responseRoot = $this->get('/');
+        $responseRoot->assertStatus(200);
+
         $response = $this->get('/pesan');
         $response->assertStatus(200);
 
         $responseOrder = $this->get('/order');
         $responseOrder->assertStatus(200);
+
+        $responseAdmin = $this->get('/admin');
+        $responseAdmin->assertStatus(200);
     }
 
-    public function test_api_katalog_produk_publik(): void
+    public function test_api_katalog_produk_publik_menghilangkan_produk_stok_habis(): void
     {
+        // Buat produk dengan stok 0
+        Barang::create([
+            'kode_sku' => 'HABIS-001',
+            'barcode' => '8999909999',
+            'nama_barang' => 'Minyak Goreng Habis',
+            'kategori_id' => $this->kategori->id,
+            'harga_beli' => 15000,
+            'harga_jual' => 18000,
+            'stok' => 0,
+            'satuan' => 'liter',
+        ]);
+
         $response = $this->getJson('/api/public/produk');
         $response->assertStatus(200)
             ->assertJsonPath('status', true)
-            ->assertJsonCount(1, 'data');
+            ->assertJsonCount(1, 'data'); // Hanya 1 barang yang stoknya > 0 ($this->barang)
+
+        $data = $response->json('data');
+        $this->assertEquals('SBK-001', $data[0]['kode_sku']);
     }
 
     public function test_api_cek_stok_produk(): void

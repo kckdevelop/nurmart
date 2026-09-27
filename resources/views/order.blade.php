@@ -1143,7 +1143,7 @@
     <!-- Header Navbar -->
     <header class="header">
         <div class="header-content">
-            <a href="/pesan" class="brand">
+            <a href="/" class="brand">
                 <div class="brand-icon">
                     <i class="fa-solid fa-basket-shopping"></i>
                 </div>
@@ -1154,7 +1154,7 @@
             </a>
 
             <div class="header-actions">
-                <a href="/" class="header-btn" title="Halaman Login Petugas / Kasir">
+                <a href="/admin" class="header-btn" title="Halaman Login Petugas / Kasir">
                     <i class="fa-solid fa-user-shield"></i>
                     <span style="display: none; @media(min-width:640px){display:inline;}">Admin / POS</span>
                 </a>
@@ -1413,11 +1413,11 @@
         async function loadProducts() {
             const grid = document.getElementById('productGrid');
             try {
-                const res = await fetch(`/api/public/produk?all=1&sort_by=${sortOption}&include_out_of_stock=1`);
+                const res = await fetch(`/api/public/produk?all=1&sort_by=${sortOption}`);
                 const result = await res.json();
 
                 if (result.status && result.data) {
-                    allProducts = result.data;
+                    allProducts = result.data.filter(p => Number(p.stok || 0) > 0);
                     extractCategories(allProducts);
                     renderProducts();
                     renderCategoryPills();
@@ -1481,13 +1481,14 @@
             const countBadge = document.getElementById('productCountBadge');
 
             let filtered = allProducts.filter(p => {
+                const hasStock = Number(p.stok || 0) > 0;
                 const matchCat = selectedCategory ? (p.kategori_id === selectedCategory) : true;
                 const matchSearch = searchQuery ? (
                     p.nama_barang.toLowerCase().includes(searchQuery) ||
                     (p.kode_sku && p.kode_sku.toLowerCase().includes(searchQuery)) ||
                     (p.kategori && p.kategori.nama_kategori.toLowerCase().includes(searchQuery))
                 ) : true;
-                return matchCat && matchSearch;
+                return hasStock && matchCat && matchSearch;
             });
 
             countBadge.textContent = `${filtered.length} item`;

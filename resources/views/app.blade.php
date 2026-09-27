@@ -1250,7 +1250,7 @@
                     <label for="login-email">Alamat Email</label>
                     <div class="input-with-icon">
                         <i class="fa-solid fa-envelope prefix-icon"></i>
-                        <input type="email" id="login-email" class="form-control" placeholder="nama@nurmart.com" value="pemilik@nurmart.com" required autocomplete="email">
+                        <input type="email" id="login-email" class="form-control" placeholder="nama@nurmart.com" value="" required autocomplete="email">
                     </div>
                 </div>
 
@@ -1258,7 +1258,7 @@
                     <label for="login-password">Password</label>
                     <div class="input-with-icon">
                         <i class="fa-solid fa-lock prefix-icon"></i>
-                        <input type="password" id="login-password" class="form-control" placeholder="Masukkan password" value="password123" required autocomplete="current-password">
+                        <input type="password" id="login-password" class="form-control" placeholder="Masukkan password" value="" required autocomplete="current-password">
                         <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility()" title="Lihat password">
                             <i id="toggle-password-icon" class="fa-solid fa-eye"></i>
                         </button>
@@ -1269,18 +1269,6 @@
                     <i class="fa-solid fa-right-to-bracket"></i> <span id="login-btn-text">Masuk ke Sistem</span>
                 </button>
             </form>
-
-            <div class="quick-accounts-box">
-                <span><i class="fa-solid fa-bolt" style="color: var(--accent);"></i> Akses Cepat Akun Demo (1-Klik)</span>
-                <div class="quick-acc-btns">
-                    <button type="button" class="btn-quick-acc" onclick="fillQuickLogin('pemilik')">
-                        👑 Pemilik Toko
-                    </button>
-                    <button type="button" class="btn-quick-acc" onclick="fillQuickLogin('kasir')">
-                        ⚡ Kasir Toko
-                    </button>
-                </div>
-            </div>
         </div>
     </div>
 
