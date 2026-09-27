@@ -26,7 +26,10 @@ class AuthController extends Controller
         $loginIdentifier = trim($loginIdentifier);
 
         if (empty($loginIdentifier)) {
-            return $this->errorResponse('Email atau username wajib diisi.', 422);
+            return $this->errorResponse('Login gagal. Email atau username wajib diisi.', 422, [
+                'reason' => 'identifier_kosong',
+                'hint'   => 'Masukkan email atau username yang terdaftar.',
+            ]);
         }
 
         // Coba cari user berdasarkan email atau nama
@@ -38,11 +41,25 @@ class AuthController extends Controller
         }
 
         if (!$user) {
-            return $this->errorResponse('Email atau password salah.', 401);
+            return $this->errorResponse(
+                'Login gagal. Akun dengan email atau username tersebut tidak ditemukan.',
+                401,
+                [
+                    'reason' => 'akun_tidak_ditemukan',
+                    'hint'   => 'Pastikan email atau username yang Anda masukkan sudah benar.',
+                ]
+            );
         }
 
         if (!Hash::check($request->password, $user->password)) {
-            return $this->errorResponse('Email atau password salah.', 401);
+            return $this->errorResponse(
+                'Login gagal. Password yang Anda masukkan salah.',
+                401,
+                [
+                    'reason' => 'password_salah',
+                    'hint'   => 'Periksa kembali password Anda. Pastikan CAPS LOCK tidak aktif.',
+                ]
+            );
         }
 
         $deviceName = $request->device_name ?? 'mobile_app';
