@@ -4,10 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Barang;
+use App\Models\DetailPenjualan;
 use App\Models\DetailPesanan;
 use App\Models\Pengaturan;
+use App\Models\Penjualan;
 use App\Models\Pesanan;
+use App\Models\User;
 use App\Traits\ApiResponseTrait;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -339,6 +343,62 @@ class PesananController extends Controller
                     }
                 }
 
+                // 3. JIKA STATUS BERUBAH MENJADI 'selesai'
+                // -> Catat transaksi penjualan resmi (Penjualan & DetailPenjualan) agar otomatis masuk ke perhitungan omset, laba kotor, dan riwayat POS!
+                if ($newStatus === 'selesai') {
+                    if (!$pesanan->penjualan_id || !Penjualan::find($pesanan->penjualan_id)) {
+                        $todayCode = Carbon::now()->format('Ymd');
+                        $countToday = Penjualan::whereDate('created_at', Carbon::today())->count() + 1;
+                        $noNota = 'PJ-' . $todayCode . '-' . str_pad((string)$countToday, 4, '0', STR_PAD_LEFT);
+
+                        // Kasir yang memproses pesanan
+                        $kasirId = auth('sanctum')->id()
+                            ?? (request()->user() ? request()->user()->id : null)
+                            ?? User::where('role', 'pemilik')->value('id')
+                            ?? User::first()?->id
+                            ?? 1;
+
+                        $metode = request()->get('metode_pembayaran', 'qris');
+                        if (!in_array($metode, ['tunai', 'qris'])) {
+                            $metode = 'qris';
+                        }
+
+                        $penjualan = Penjualan::create([
+                            'no_nota' => $noNota,
+                            'tanggal' => $pesanan->tanggal ?? Carbon::now(),
+                            'kasir_id' => $kasirId,
+                            'total_belanja' => $pesanan->total_harga,
+                            'jumlah_bayar' => $pesanan->total_harga,
+                            'kembalian' => 0,
+                            'metode_pembayaran' => $metode,
+                        ]);
+
+                        foreach ($pesanan->details as $detail) {
+                            DetailPenjualan::create([
+                                'penjualan_id' => $penjualan->id,
+                                'barang_id' => $detail->barang_id,
+                                'jumlah' => $detail->jumlah,
+                                'harga_jual_satuan' => $detail->harga_satuan,
+                                'subtotal' => $detail->subtotal,
+                            ]);
+                        }
+
+                        $pesanan->penjualan_id = $penjualan->id;
+                    }
+                }
+
+                // 4. JIKA STATUS BERUBAH DARI 'selesai' KE STATUS LAIN ('dibatalkan'/'diproses'/'menunggu')
+                // -> Hapus catatan penjualan terkait agar omset dan laba tidak terhitung ganda
+                if ($oldStatus === 'selesai' && $newStatus !== 'selesai') {
+                    if ($pesanan->penjualan_id) {
+                        $penjualan = Penjualan::find($pesanan->penjualan_id);
+                        if ($penjualan) {
+                            $penjualan->delete(); // DetailPenjualan otomatis terhapus via cascade
+                        }
+                        $pesanan->penjualan_id = null;
+                    }
+                }
+
                 // Simpan status baru
                 $pesanan->status = $newStatus;
                 if ($catatanAdmin !== null) {
@@ -349,11 +409,11 @@ class PesananController extends Controller
                 return $pesanan;
             });
 
-            $pesanan->load(['details.barang.kategori']);
+            $pesanan->load(['details.barang.kategori', 'penjualan']);
 
             $statusText = match ($newStatus) {
                 'diproses' => 'diproses',
-                'selesai' => 'diselesaikan',
+                'selesai' => 'diselesaikan dan transaksi telah tercatat ke laporan penjualan POS',
                 'dibatalkan' => 'dibatalkan dan stok barang telah dikembalikan',
                 default => 'diperbarui',
             };
@@ -387,6 +447,14 @@ class PesananController extends Controller
                     }
                 }
 
+                // Jika ada catatan penjualan terkait, hapus penjualannya
+                if ($pesanan->penjualan_id) {
+                    $penjualan = Penjualan::find($pesanan->penjualan_id);
+                    if ($penjualan) {
+                        $penjualan->delete();
+                    }
+                }
+
                 $pesanan->delete();
             });
 
@@ -394,5 +462,37 @@ class PesananController extends Controller
         } catch (Exception $e) {
             return $this->errorResponse($e->getMessage(), 422);
         }
+    }
+
+    /**
+     * Endpoint cetak / unduh struk PDF pesanan online
+     * GET /api/pesanan/{id}/cetak-struk
+     */
+    public function cetakStrukPdf(int $id)
+    {
+        $pesanan = Pesanan::with(['details.barang'])->find($id);
+
+        if (!$pesanan) {
+            return $this->errorResponse('Pesanan tidak ditemukan.', 404);
+        }
+
+        // Estimasi tinggi kertas roll thermal dinamis dan presisi (dengan margin tepi aman)
+        $itemCount = $pesanan->details->count();
+        $paperHeight = 270 + ($itemCount * 22); // pt
+
+        // 80mm width ≈ 226.77 pt
+        $customPaper = [0, 0, 226.77, $paperHeight];
+
+        $pengaturan = Pengaturan::getUtama();
+
+        $pdf = Pdf::loadView('pdf.struk_pesanan', compact('pesanan', 'pengaturan'))
+            ->setPaper($customPaper, 'portrait');
+
+        $fileName = 'struk_pesanan_' . $pesanan->no_pesanan . '.pdf';
+
+        return $pdf->stream($fileName, [
+            'Attachment' => false,
+            'Content-Type' => 'application/pdf',
+        ]);
     }
 }

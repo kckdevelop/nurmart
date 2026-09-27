@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Pesanan extends Model
@@ -24,6 +25,7 @@ class Pesanan extends Model
         'total_harga',
         'status',
         'catatan_admin',
+        'penjualan_id',
     ];
 
     protected function casts(): array
@@ -42,6 +44,11 @@ class Pesanan extends Model
     public function detailPesanans(): HasMany
     {
         return $this->details();
+    }
+
+    public function penjualan(): BelongsTo
+    {
+        return $this->belongsTo(Penjualan::class, 'penjualan_id');
     }
 
     public function scopeMenunggu(Builder $query): Builder

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Penjualan extends Model
 {
@@ -43,6 +44,11 @@ class Penjualan extends Model
     public function details(): HasMany
     {
         return $this->hasMany(DetailPenjualan::class, 'penjualan_id');
+    }
+
+    public function pesanan(): HasOne
+    {
+        return $this->hasOne(Pesanan::class, 'penjualan_id');
     }
 
     public function scopeHariIni(Builder $query): Builder

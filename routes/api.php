@@ -23,11 +23,13 @@ use Illuminate\Support\Facades\Route;
 // ========================
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/penjualan/{id}/cetak-struk', [PenjualanController::class, 'cetakStrukPdf']);
+Route::get('/pesanan/{id}/cetak-struk', [PesananController::class, 'cetakStrukPdf']);
 
 // Public Catalog & Order (Akses Umum untuk Pemesanan Barang)
 Route::get('/public/produk', [PesananController::class, 'getProdukKatalog']);
 Route::post('/public/cek-stok', [PesananController::class, 'cekStok']);
 Route::post('/public/pesanan', [PesananController::class, 'storePesanan']);
+Route::get('/public/pesanan/{id}/cetak-struk', [PesananController::class, 'cetakStrukPdf']);
 
 // ===================================
 // 2. PROTECTED ROUTES (Sanctum Auth)

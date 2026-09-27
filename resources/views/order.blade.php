@@ -1349,6 +1349,10 @@
                         <i class="fa-brands fa-whatsapp" style="font-size: 18px;"></i>
                         <span>Konfirmasi via WhatsApp</span>
                     </a>
+                    <a id="btnCetakStrukPublic" href="#" target="_blank" class="btn-submit-order" style="background: #475569; text-decoration: none;">
+                        <i class="fa-solid fa-print" style="font-size: 16px;"></i>
+                        <span>Cetak / Simpan Struk (PDF)</span>
+                    </a>
                     <button class="header-btn" style="width: 100%; justify-content: center; padding: 12px;" onclick="closeSuccessModal()">
                         <i class="fa-solid fa-plus"></i> Pesan Barang Lain
                     </button>
@@ -1936,6 +1940,7 @@
 
                 const waUrl = `https://api.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(waText)}`;
                 document.getElementById('btnWhatsAppConfirm').href = waUrl;
+                document.getElementById('btnCetakStrukPublic').href = `/api/pesanan/${order.id}/cetak-struk`;
 
                 // Reset keranjang & form
                 cart = {};

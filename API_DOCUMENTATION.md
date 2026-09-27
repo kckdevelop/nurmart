@@ -115,6 +115,7 @@ Aplikasi memiliki 3 level hak akses (*Role*):
 | | `/pesanan/{id}` | GET | - | Ya | Ya | - |
 | | `/pesanan/{id}/status` | PUT | - | Ya | Ya | - |
 | | `/pesanan/{id}` | DELETE | - | Ya | Ya | - |
+| | `/pesanan/{id}/cetak-struk` | GET | Ya | Ya | Ya | Ya |
 | **Laporan & Dashboard**| `/laporan/dashboard` | GET | - | Ya | Ya | - |
 | | `/laporan/penjualan` | GET | - | Ya | Ya | - |
 | | `/laporan/belanja` | GET | - | Ya | Ya | - |
@@ -875,6 +876,11 @@ Aplikasi memiliki 3 level hak akses (*Role*):
     "message": "Pesanan berhasil dihapus."
   }
   ```
+
+#### 5. Cetak / Unduh File Struk Pesanan PDF
+- **Endpoint**: `GET /api/pesanan/{id}/cetak-struk` atau `GET /api/public/pesanan/{id}/cetak-struk`
+- **Akses**: Publik / Kasir / Admin / Super Admin
+- **Response**: Stream file PDF (format kertas struk thermal 80mm roll, memuat rincian pesanan online, data pemesan, alamat/catatan, item belanja, dan footer toko)
 
 ---
 

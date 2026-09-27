@@ -4276,7 +4276,10 @@
                 }
 
                 // Action buttons
-                let actionBtns = `<button class="btn-sm-action" onclick="openModalDetailPesanan(${p.id})" style="flex:1;justify-content:center;"><i class="fa-solid fa-eye"></i> Detail</button>`;
+                let actionBtns = `
+                    <button class="btn-sm-action" onclick="openModalDetailPesanan(${p.id})" style="flex:1;justify-content:center;"><i class="fa-solid fa-eye"></i> Detail</button>
+                    <a href="${API_BASE}/pesanan/${p.id}/cetak-struk" target="_blank" class="btn-sm-action" style="background:#475569;color:white;border-color:#475569;text-decoration:none;display:inline-flex;align-items:center;gap:5px;padding:6px 12px;font-weight:600;" title="Cetak Struk Pesanan PDF"><i class="fa-solid fa-print"></i> Struk</a>
+                `;
                 if (p.status === 'menunggu') {
                     actionBtns += `
                         <button class="btn-sm-action" style="flex:1;justify-content:center;background:#0284c7;color:white;border-color:#0284c7;" onclick="updateStatusPesanan(${p.id}, 'diproses')"><i class="fa-solid fa-boxes-packing"></i> Proses</button>
@@ -4396,7 +4399,12 @@
 
                 // Render Footer Action Buttons
                 const footer = document.getElementById('modal-pesanan-footer-actions');
-                let footerBtns = `<button type="button" class="btn-sm-action" onclick="closeModal('modal-detail-pesanan')">Tutup</button>`;
+                let footerBtns = `
+                    <button type="button" class="btn-sm-action" onclick="closeModal('modal-detail-pesanan')">Tutup</button>
+                    <a href="${API_BASE}/pesanan/${p.id}/cetak-struk" target="_blank" class="btn-primary" style="background: #475569; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-print"></i> Cetak Struk PDF
+                    </a>
+                `;
 
                 if (p.status === 'menunggu') {
                     footerBtns += `
@@ -4455,7 +4463,11 @@
                     
                     // Muat ulang katalog produk & POS untuk merefresh stok yang telah bertambah/berkurang
                     loadPosProducts();
-                    if (currentRole === 'pemilik') loadMasterBarang();
+                    if (currentRole === 'pemilik') {
+                        loadMasterBarang();
+                        loadDashboard();
+                        loadLabaRugiReport();
+                    }
                 } else {
                     showToast(json.message || 'Gagal memperbarui status pesanan.', 'error');
                 }
