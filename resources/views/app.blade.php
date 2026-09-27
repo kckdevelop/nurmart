@@ -2476,6 +2476,15 @@
                     </label>
                     <input type="text" id="modal-pesanan-catatan-admin" class="form-control" placeholder="Tulis catatan (misal: Sudah dikonfirmasi via WA / Dijadwalkan antar sore)">
                 </div>
+                <!-- Panel Ubah Status Pesanan -->
+                <div style="margin-top: 16px; background: #f8fafc; border: 1px solid var(--light-border); border-radius: var(--radius-md); padding: 14px;">
+                    <label style="font-size: 12px; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 8px;">
+                        <i class="fa-solid fa-sliders" style="color: var(--primary);"></i> Ubah Status Pesanan:
+                    </label>
+                    <div id="modal-pesanan-status-buttons" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px;">
+                        <!-- Status buttons rendered dynamically -->
+                    </div>
+                </div>
             </div>
             <div class="modal-footer" id="modal-pesanan-footer-actions">
                 <!-- Action buttons based on status -->
@@ -2515,6 +2524,34 @@
         </div>
     </div>
 
+    <!-- ========================================== -->
+    <!-- MODAL 7: KONFIRMASI HAPUS PESANAN          -->
+    <!-- ========================================== -->
+    <div id="modal-delete-pesanan" class="modal-overlay">
+        <div class="modal-box" style="max-width: 480px;">
+            <div class="modal-header" style="background: #fee2e2; border-bottom: 1px solid #fecaca;">
+                <h3 style="color: #991b1b; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-trash-can"></i> Hapus Pesanan Permanen?
+                </h3>
+                <button class="modal-close" onclick="closeModal('modal-delete-pesanan')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 14px; line-height: 1.5; margin-bottom: 12px;">
+                    Anda akan menghapus data pesanan <strong id="delete-order-no-label">-</strong> atas nama <strong id="delete-order-customer-label">-</strong>.
+                </p>
+                <div style="background: #fef2f2; border: 1px solid #fca5a5; padding: 12px; border-radius: var(--radius-sm); font-size: 13px; color: #991b1b;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> <strong>Perhatian:</strong> Data pesanan ini akan dihapus secara permanen dari database. Jika pesanan belum dibatalkan, stok barang akan otomatis dikembalikan ke sistem.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-sm-action" onclick="closeModal('modal-delete-pesanan')">Batal</button>
+                <button type="button" id="btn-confirm-delete-order" class="btn-primary" style="background: #ef4444;" onclick="executeDeleteOrder()">
+                    <i class="fa-solid fa-trash-can"></i> Ya, Hapus Pesanan
+                </button>
+            </div>
+        </div>
+    </div>
+
     </div><!-- END screen-main -->
     <!-- END OF SCREEN 2: MAIN DASHBOARD & POS -->
 
@@ -2536,6 +2573,8 @@
         let cart = []; // [{barang: {...}, jumlah: 1}]
         let currentPaymentMethod = 'tunai';
         let currentPenjualanId = null;
+        let cancelTargetPesanan = null;
+        let deleteTargetPesanan = null;
 
         // Login & Authentication Management
         function togglePasswordVisibility() {
@@ -4278,19 +4317,36 @@
                 // Action buttons
                 let actionBtns = `
                     <button class="btn-sm-action" onclick="openModalDetailPesanan(${p.id})" style="flex:1;justify-content:center;"><i class="fa-solid fa-eye"></i> Detail</button>
-                    <a href="${API_BASE}/pesanan/${p.id}/cetak-struk" target="_blank" class="btn-sm-action" style="background:#475569;color:white;border-color:#475569;text-decoration:none;display:inline-flex;align-items:center;gap:5px;padding:6px 12px;font-weight:600;" title="Cetak Struk Pesanan PDF"><i class="fa-solid fa-print"></i> Struk</a>
+                    <a href="${API_BASE}/pesanan/${p.id}/cetak-struk" target="_blank" class="btn-sm-action" style="background:#475569;color:white;border-color:#475569;text-decoration:none;display:inline-flex;align-items:center;gap:4px;padding:6px 10px;" title="Cetak Struk Pesanan PDF"><i class="fa-solid fa-print"></i> Struk</a>
                 `;
+
                 if (p.status === 'menunggu') {
                     actionBtns += `
-                        <button class="btn-sm-action" style="flex:1;justify-content:center;background:#0284c7;color:white;border-color:#0284c7;" onclick="updateStatusPesanan(${p.id}, 'diproses')"><i class="fa-solid fa-boxes-packing"></i> Proses</button>
-                        <button class="btn-sm-action" style="background:#ef4444;color:white;border-color:#ef4444;padding:6px 10px;" onclick="confirmCancelPesanan(${p.id}, '${p.no_pesanan.replace(/'/g, "\\'")}'  , '${p.nama_pemesan.replace(/'/g, "\\'")}')"><i class="fa-solid fa-ban"></i></button>
+                        <button class="btn-sm-action" style="flex:1;justify-content:center;background:#0284c7;color:white;border-color:#0284c7;" title="Proses Pesanan" onclick="updateStatusPesanan(${p.id}, 'diproses')"><i class="fa-solid fa-boxes-packing"></i> Proses</button>
+                        <button class="btn-sm-action" style="background:#ef4444;color:white;border-color:#ef4444;padding:6px 10px;" title="Batalkan Pesanan" onclick="confirmCancelPesanan(${p.id}, '${p.no_pesanan.replace(/'/g, "\\'")}', '${p.nama_pemesan.replace(/'/g, "\\'")}')"><i class="fa-solid fa-ban"></i></button>
                     `;
                 } else if (p.status === 'diproses') {
                     actionBtns += `
-                        <button class="btn-sm-action" style="flex:1;justify-content:center;background:#059669;color:white;border-color:#059669;" onclick="updateStatusPesanan(${p.id}, 'selesai')"><i class="fa-solid fa-circle-check"></i> Selesai</button>
-                        <button class="btn-sm-action" style="background:#ef4444;color:white;border-color:#ef4444;padding:6px 10px;" onclick="confirmCancelPesanan(${p.id}, '${p.no_pesanan.replace(/'/g, "\\'")}'  , '${p.nama_pemesan.replace(/'/g, "\\'")}')"><i class="fa-solid fa-ban"></i></button>
+                        <button class="btn-sm-action" style="flex:1;justify-content:center;background:#059669;color:white;border-color:#059669;" title="Selesaikan Pesanan" onclick="updateStatusPesanan(${p.id}, 'selesai')"><i class="fa-solid fa-circle-check"></i> Selesai</button>
+                        <button class="btn-sm-action" style="background:#ef4444;color:white;border-color:#ef4444;padding:6px 10px;" title="Batalkan Pesanan" onclick="confirmCancelPesanan(${p.id}, '${p.no_pesanan.replace(/'/g, "\\'")}', '${p.nama_pemesan.replace(/'/g, "\\'")}')"><i class="fa-solid fa-ban"></i></button>
+                    `;
+                } else if (p.status === 'selesai') {
+                    actionBtns += `
+                        <button class="btn-sm-action" style="background:#f1f5f9;color:#0284c7;border-color:#cbd5e1;" title="Kembalikan ke Diproses" onclick="updateStatusPesanan(${p.id}, 'diproses')"><i class="fa-solid fa-rotate-left"></i> Proses</button>
+                        <button class="btn-sm-action" style="background:#fef2f2;color:#ef4444;border-color:#fecaca;padding:6px 10px;" title="Batalkan Pesanan" onclick="confirmCancelPesanan(${p.id}, '${p.no_pesanan.replace(/'/g, "\\'")}', '${p.nama_pemesan.replace(/'/g, "\\'")}')"><i class="fa-solid fa-ban"></i></button>
+                    `;
+                } else if (p.status === 'dibatalkan') {
+                    actionBtns += `
+                        <button class="btn-sm-action" style="flex:1;justify-content:center;background:#0284c7;color:white;border-color:#0284c7;" title="Aktifkan Kembali Pesanan" onclick="updateStatusPesanan(${p.id}, 'menunggu')"><i class="fa-solid fa-rotate-left"></i> Aktifkan</button>
                     `;
                 }
+
+                // Delete button on card
+                actionBtns += `
+                    <button class="btn-sm-action" style="background:transparent;color:#ef4444;border-color:#fecaca;padding:6px 10px;" title="Hapus Pesanan Permanen" onclick="confirmDeletePesanan(${p.id}, '${p.no_pesanan.replace(/'/g, "\\'")}', '${p.nama_pemesan.replace(/'/g, "\\'")}')">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                `;
 
                 return `
                     <div style="background:white;border-radius:16px;border:1.5px solid ${sc.border};overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);transition:transform 0.2s,box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 20px rgba(0,0,0,0.1)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 8px rgba(0,0,0,0.06)'">
@@ -4397,10 +4453,47 @@
                     tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Tidak ada rincian item.</td></tr>`;
                 }
 
+                // Render Status Switch Buttons in Modal Body
+                const statusBtnWrap = document.getElementById('modal-pesanan-status-buttons');
+                const statuses = [
+                    { key: 'menunggu', label: 'Menunggu', icon: 'fa-clock', bg: '#fef3c7', border: '#fde68a', text: '#d97706' },
+                    { key: 'diproses', label: 'Diproses', icon: 'fa-boxes-packing', bg: '#e0f2fe', border: '#bae6fd', text: '#0284c7' },
+                    { key: 'selesai', label: 'Selesai', icon: 'fa-circle-check', bg: '#dcfce7', border: '#bbf7d0', text: '#16a34a' },
+                    { key: 'dibatalkan', label: 'Dibatalkan', icon: 'fa-ban', bg: '#fee2e2', border: '#fecaca', text: '#dc2626' }
+                ];
+
+                if (statusBtnWrap) {
+                    statusBtnWrap.innerHTML = statuses.map(s => {
+                        const isCurrent = p.status === s.key;
+                        if (isCurrent) {
+                            return `
+                                <button type="button" class="btn-sm-action" style="background: ${s.bg}; border: 2px solid ${s.text}; color: ${s.text}; font-weight: 800; cursor: default; justify-content: center; padding: 8px 10px;" disabled>
+                                    <i class="fa-solid ${s.icon}"></i> ${s.label} &check;
+                                </button>
+                            `;
+                        }
+                        if (s.key === 'dibatalkan') {
+                            return `
+                                <button type="button" class="btn-sm-action" style="background: white; border: 1px solid ${s.border}; color: ${s.text}; font-weight: 600; justify-content: center; padding: 8px 10px;" onclick="confirmCancelPesanan(${p.id}, '${p.no_pesanan.replace(/'/g, "\\'")}', '${p.nama_pemesan.replace(/'/g, "\\'")}')">
+                                    <i class="fa-solid ${s.icon}"></i> ${s.label}
+                                </button>
+                            `;
+                        }
+                        return `
+                            <button type="button" class="btn-sm-action" style="background: white; border: 1px solid ${s.border}; color: ${s.text}; font-weight: 600; justify-content: center; padding: 8px 10px;" onclick="updateStatusPesanan(${p.id}, '${s.key}', document.getElementById('modal-pesanan-catatan-admin').value)">
+                                <i class="fa-solid ${s.icon}"></i> ${s.label}
+                            </button>
+                        `;
+                    }).join('');
+                }
+
                 // Render Footer Action Buttons
                 const footer = document.getElementById('modal-pesanan-footer-actions');
                 let footerBtns = `
                     <button type="button" class="btn-sm-action" onclick="closeModal('modal-detail-pesanan')">Tutup</button>
+                    <button type="button" class="btn-sm-action" style="background: #fef2f2; color: #ef4444; border-color: #fecaca;" onclick="confirmDeletePesanan(${p.id}, '${p.no_pesanan.replace(/'/g, "\\'")}', '${p.nama_pemesan.replace(/'/g, "\\'")}')">
+                        <i class="fa-solid fa-trash-can"></i> Hapus Pesanan
+                    </button>
                     <a href="${API_BASE}/pesanan/${p.id}/cetak-struk" target="_blank" class="btn-primary" style="background: #475569; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
                         <i class="fa-solid fa-print"></i> Cetak Struk PDF
                     </a>
@@ -4408,18 +4501,12 @@
 
                 if (p.status === 'menunggu') {
                     footerBtns += `
-                        <button type="button" class="btn-primary" style="background: #ef4444;" onclick="closeModal('modal-detail-pesanan'); confirmCancelPesanan(${p.id}, '${p.no_pesanan}', '${p.nama_pemesan}')">
-                            <i class="fa-solid fa-ban"></i> Batalkan Pesanan
-                        </button>
                         <button type="button" class="btn-primary" style="background: #0284c7;" onclick="updateStatusPesanan(${p.id}, 'diproses', document.getElementById('modal-pesanan-catatan-admin').value)">
                             <i class="fa-solid fa-boxes-packing"></i> Terima & Proses Pesanan
                         </button>
                     `;
                 } else if (p.status === 'diproses') {
                     footerBtns += `
-                        <button type="button" class="btn-primary" style="background: #ef4444;" onclick="closeModal('modal-detail-pesanan'); confirmCancelPesanan(${p.id}, '${p.no_pesanan}', '${p.nama_pemesan}')">
-                            <i class="fa-solid fa-ban"></i> Batalkan Pesanan
-                        </button>
                         <button type="button" class="btn-primary" style="background: #059669;" onclick="updateStatusPesanan(${p.id}, 'selesai', document.getElementById('modal-pesanan-catatan-admin').value)">
                             <i class="fa-solid fa-circle-check"></i> Tandai Pesanan Selesai
                         </button>
@@ -4501,6 +4588,50 @@
                 btn.disabled = false;
                 btn.innerHTML = `<i class="fa-solid fa-ban"></i> Ya, Batalkan & Kembalikan Stok`;
                 cancelTargetPesanan = null;
+            }
+        }
+
+        // Modal Konfirmasi Hapus Pesanan
+        function confirmDeletePesanan(id, noPesanan, namaPemesan) {
+            deleteTargetPesanan = { id, noPesanan, namaPemesan };
+            document.getElementById('delete-order-no-label').textContent = noPesanan;
+            document.getElementById('delete-order-customer-label').textContent = namaPemesan;
+            openModal('modal-delete-pesanan');
+        }
+
+        async function executeDeleteOrder() {
+            if (!deleteTargetPesanan) return;
+            const btn = document.getElementById('btn-confirm-delete-order');
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Menghapus...`;
+
+            try {
+                const res = await fetch(`${API_BASE}/pesanan/${deleteTargetPesanan.id}`, {
+                    method: 'DELETE',
+                    headers: apiHeaders()
+                });
+                const json = await res.json();
+                if (json.status) {
+                    showToast(json.message || 'Pesanan berhasil dihapus.', 'success');
+                    closeModal('modal-delete-pesanan');
+                    closeModal('modal-detail-pesanan');
+                    loadPesananTab();
+                    loadPosProducts();
+                    if (currentRole === 'pemilik') {
+                        loadMasterBarang();
+                        loadDashboard();
+                        loadLabaRugiReport();
+                    }
+                } else {
+                    showToast(json.message || 'Gagal menghapus pesanan.', 'error');
+                }
+            } catch (err) {
+                console.error('Delete order error:', err);
+                showToast('Terjadi kesalahan jaringan saat menghapus pesanan.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-trash-can"></i> Ya, Hapus Pesanan`;
+                deleteTargetPesanan = null;
             }
         }
 
