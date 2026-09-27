@@ -1312,7 +1312,12 @@
 
     <!-- Success Order Modal Dialog -->
     <div id="successModalOverlay" class="modal-overlay" style="justify-content: center; align-items: center; padding: 20px;">
-        <div class="dialog-modal">
+        <div class="dialog-modal" style="position: relative;">
+            <!-- Close Button (X) -->
+            <button onclick="closeSuccessModal()" title="Tutup" style="position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border-radius: 50%; background: #f1f5f9; border: 1px solid var(--light-border); color: var(--text-muted); font-size: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; transition: all 0.2s;" onmouseover="this.style.background='#e2e8f0';this.style.color='var(--text-main)'" onmouseout="this.style.background='#f1f5f9';this.style.color='var(--text-muted)'">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
             <div class="dialog-body">
                 <div class="success-icon-wrap">
                     <i class="fa-solid fa-check"></i>

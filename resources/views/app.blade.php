@@ -2070,9 +2070,9 @@
                 </div>
             </div>
 
-            <!-- Orders Table Card -->
+            <!-- Orders Card Grid -->
             <div class="table-card">
-                <div class="table-header" style="flex-wrap: wrap; gap: 14px;">
+                <div class="table-header" style="flex-wrap: wrap; gap: 14px; margin-bottom: 20px;">
                     <div>
                         <h3 style="font-size: 17px; font-weight: 800;">
                             <i class="fa-solid fa-bell-concierge" style="color: var(--primary);"></i> Cek Pesanan Masuk (Online)
@@ -2102,24 +2102,16 @@
                     </div>
                 </div>
 
-                <div style="overflow-x: auto;">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>No. Pesanan</th>
-                                <th>Waktu Pesan</th>
-                                <th>Nama Pemesan</th>
-                                <th>Kontak / Alamat</th>
-                                <th>Item Dipesan</th>
-                                <th>Total Belanja</th>
-                                <th>Status Pesanan</th>
-                                <th style="text-align: center;">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="pesanan-tbody">
-                            <!-- Loaded via JS -->
-                        </tbody>
-                    </table>
+                <!-- Cards Grid -->
+                <div id="pesanan-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px;">
+                    <!-- Loaded via JS -->
+                </div>
+
+                <!-- Fallback empty/loading state -->
+                <div id="pesanan-empty-state" style="display: none; text-align: center; padding: 48px 20px; color: var(--text-muted);">
+                    <i class="fa-solid fa-bell-slash" style="font-size: 42px; color: #cbd5e1; margin-bottom: 12px; display: block;"></i>
+                    <p style="font-size: 15px; font-weight: 600;">Tidak ada pesanan</p>
+                    <p style="font-size: 13px;">Belum ada data pesanan yang sesuai filter.</p>
                 </div>
             </div>
         </section>
@@ -4047,10 +4039,13 @@
         let cancelTargetPesanan = null;
 
         async function loadPesananTab() {
-            const tbody = document.getElementById('pesanan-tbody');
-            if (!tbody) return;
+            const grid = document.getElementById('pesanan-cards-grid');
+            const emptyState = document.getElementById('pesanan-empty-state');
+            if (!grid) return;
 
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 24px; color: var(--text-muted);"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data pesanan...</td></tr>`;
+            // Show loading state
+            grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px 20px;color:var(--text-muted);"><i class="fa-solid fa-spinner fa-spin" style="font-size:28px;color:var(--primary);margin-bottom:12px;display:block;"></i><p style="font-weight:600;">Memuat data pesanan...</p></div>`;
+            if (emptyState) emptyState.style.display = 'none';
 
             try {
                 let url = `${API_BASE}/pesanan?per_page=100`;
@@ -4086,11 +4081,11 @@
 
                     renderPesananTable(allPesanan);
                 } else {
-                    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 24px; color: var(--text-muted);">${json.message || 'Gagal memuat pesanan.'}</td></tr>`;
+                    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px 20px;color:var(--text-muted);"><i class="fa-solid fa-circle-exclamation" style="font-size:32px;color:#f59e0b;margin-bottom:12px;display:block;"></i><p style="font-weight:600;">${json.message || 'Gagal memuat pesanan.'}</p></div>`;
                 }
             } catch (err) {
                 console.error('Pesanan load error:', err);
-                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 24px; color: var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i> Gagal terhubung ke server.</td></tr>`;
+                grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px 20px;color:var(--text-muted);"><i class="fa-solid fa-triangle-exclamation" style="font-size:32px;color:#ef4444;margin-bottom:12px;display:block;"></i><p style="font-weight:600;">Gagal terhubung ke server.</p></div>`;
             }
         }
 
@@ -4134,103 +4129,109 @@
         }
 
         function renderPesananTable(list) {
-            const tbody = document.getElementById('pesanan-tbody');
-            if (!tbody) return;
+            const grid = document.getElementById('pesanan-cards-grid');
+            const emptyState = document.getElementById('pesanan-empty-state');
+            if (!grid) return;
 
             if (!list || list.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="8" style="text-align: center; padding: 36px 14px; color: var(--text-muted);">
-                            <i class="fa-solid fa-bell-slash" style="font-size: 32px; color: #cbd5e1; margin-bottom: 8px; display: block;"></i>
-                            Tidak ada data pesanan yang sesuai filter.
-                        </td>
-                    </tr>
-                `;
+                grid.innerHTML = '';
+                if (emptyState) emptyState.style.display = 'block';
                 return;
             }
 
-            tbody.innerHTML = list.map(p => {
-                // Ringkasan items
-                let itemsSummary = '-';
-                if (p.details && p.details.length > 0) {
-                    const firstFew = p.details.slice(0, 2).map(d => {
-                        const name = d.barang ? d.barang.nama_barang : 'Barang';
-                        return `${name} (${d.jumlah}x)`;
-                    }).join(', ');
-                    const extra = p.details.length > 2 ? ` <span style="color:var(--text-muted); font-size:11px;">+${p.details.length - 2} lainnya</span>` : '';
-                    itemsSummary = `<strong>${firstFew}</strong>${extra}`;
-                }
+            if (emptyState) emptyState.style.display = 'none';
+
+            grid.innerHTML = list.map(p => {
+                // Status styling
+                const statusColors = {
+                    menunggu:   { bg: '#fffbeb', border: '#fcd34d', text: '#b45309', icon: 'fa-clock', label: 'Menunggu' },
+                    diproses:   { bg: '#eff6ff', border: '#93c5fd', text: '#1d4ed8', icon: 'fa-boxes-packing', label: 'Diproses' },
+                    selesai:    { bg: '#f0fdf4', border: '#86efac', text: '#15803d', icon: 'fa-circle-check', label: 'Selesai' },
+                    dibatalkan: { bg: '#fff1f2', border: '#fca5a5', text: '#b91c1c', icon: 'fa-circle-xmark', label: 'Dibatalkan' },
+                };
+                const sc = statusColors[p.status] || { bg: '#f8fafc', border: '#e2e8f0', text: '#64748b', icon: 'fa-question', label: p.status };
 
                 // Format tanggal
                 const tgl = p.tanggal ? new Date(p.tanggal).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
 
                 // WA Link
-                let waLink = '';
+                let waHtml = '-';
                 if (p.no_telepon) {
                     const cleanPhone = p.no_telepon.replace(/^0/, '62').replace(/[^0-9]/g, '');
-                    waLink = `<a href="https://api.whatsapp.com/send?phone=${cleanPhone}" target="_blank" style="color: #10b981; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" title="Chat WhatsApp"><i class="fa-brands fa-whatsapp"></i> ${p.no_telepon}</a>`;
+                    waHtml = `<a href="https://api.whatsapp.com/send?phone=${cleanPhone}" target="_blank" style="color:#10b981; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:4px;"><i class="fa-brands fa-whatsapp"></i>${p.no_telepon}</a>`;
                 }
 
-                // Action buttons based on status
-                let actionsHtml = `
-                    <div style="display: flex; gap: 6px; justify-content: center; align-items: center;">
-                        <button class="btn-sm-action" onclick="openModalDetailPesanan(${p.id})" title="Lihat Detail Rincian Pesanan">
-                            <i class="fa-solid fa-eye"></i> Detail
-                        </button>
-                `;
+                // Items summary (2 first)
+                let itemsHtml = '<span style="color:var(--text-muted);font-size:12px;">Tidak ada item</span>';
+                if (p.details && p.details.length > 0) {
+                    const shown = p.details.slice(0, 2).map(d => {
+                        const name = d.barang ? d.barang.nama_barang : 'Barang';
+                        return `<span style="display:inline-flex;align-items:center;gap:5px;background:#f1f5f9;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:600;">${name}<span style="background:var(--primary);color:white;border-radius:999px;padding:1px 6px;font-size:10px;">×${d.jumlah}</span></span>`;
+                    }).join(' ');
+                    const moreCount = p.details.length - 2;
+                    const moreHtml = moreCount > 0 ? `<span style="font-size:11px;color:var(--text-muted);font-weight:600;">+${moreCount} lainnya</span>` : '';
+                    itemsHtml = `<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">${shown}${moreHtml}</div>`;
+                }
 
+                // Action buttons
+                let actionBtns = `<button class="btn-sm-action" onclick="openModalDetailPesanan(${p.id})" style="flex:1;justify-content:center;"><i class="fa-solid fa-eye"></i> Detail</button>`;
                 if (p.status === 'menunggu') {
-                    actionsHtml += `
-                        <button class="btn-sm-action" style="background: #0284c7; color: white; border-color: #0284c7;" onclick="updateStatusPesanan(${p.id}, 'diproses')" title="Proses Pesanan">
-                            <i class="fa-solid fa-boxes-packing"></i> Proses
-                        </button>
-                        <button class="btn-sm-action" style="background: #ef4444; color: white; border-color: #ef4444;" onclick="confirmCancelPesanan(${p.id}, '${p.no_pesanan}', '${p.nama_pemesan}')" title="Batalkan Pesanan (Stok Kembali)">
-                            <i class="fa-solid fa-ban"></i> Batal
-                        </button>
+                    actionBtns += `
+                        <button class="btn-sm-action" style="flex:1;justify-content:center;background:#0284c7;color:white;border-color:#0284c7;" onclick="updateStatusPesanan(${p.id}, 'diproses')"><i class="fa-solid fa-boxes-packing"></i> Proses</button>
+                        <button class="btn-sm-action" style="background:#ef4444;color:white;border-color:#ef4444;padding:6px 10px;" onclick="confirmCancelPesanan(${p.id}, '${p.no_pesanan.replace(/'/g, "\\'")}'  , '${p.nama_pemesan.replace(/'/g, "\\'")}')"><i class="fa-solid fa-ban"></i></button>
                     `;
                 } else if (p.status === 'diproses') {
-                    actionsHtml += `
-                        <button class="btn-sm-action" style="background: #059669; color: white; border-color: #059669;" onclick="updateStatusPesanan(${p.id}, 'selesai')" title="Tandai Selesai">
-                            <i class="fa-solid fa-circle-check"></i> Selesai
-                        </button>
-                        <button class="btn-sm-action" style="background: #ef4444; color: white; border-color: #ef4444;" onclick="confirmCancelPesanan(${p.id}, '${p.no_pesanan}', '${p.nama_pemesan}')" title="Batalkan Pesanan (Stok Kembali)">
-                            <i class="fa-solid fa-ban"></i> Batal
-                        </button>
-                    `;
-                } else if (p.status === 'dibatalkan') {
-                    actionsHtml += `
-                        <span style="font-size: 11px; color: #991b1b; font-style: italic;">Stok Dikembalikan</span>
+                    actionBtns += `
+                        <button class="btn-sm-action" style="flex:1;justify-content:center;background:#059669;color:white;border-color:#059669;" onclick="updateStatusPesanan(${p.id}, 'selesai')"><i class="fa-solid fa-circle-check"></i> Selesai</button>
+                        <button class="btn-sm-action" style="background:#ef4444;color:white;border-color:#ef4444;padding:6px 10px;" onclick="confirmCancelPesanan(${p.id}, '${p.no_pesanan.replace(/'/g, "\\'")}'  , '${p.nama_pemesan.replace(/'/g, "\\'")}')"><i class="fa-solid fa-ban"></i></button>
                     `;
                 }
 
-                actionsHtml += `</div>`;
-
                 return `
-                    <tr>
-                        <td>
-                            <strong style="font-family: 'Outfit', sans-serif; color: var(--primary-dark); font-size: 13.5px;">${p.no_pesanan}</strong>
-                        </td>
-                        <td style="font-size: 12.5px; color: var(--text-muted);">${tgl}</td>
-                        <td>
-                            <strong style="color: var(--text-main); font-size: 13.5px;">${p.nama_pemesan}</strong>
-                        </td>
-                        <td style="font-size: 12.5px;">
-                            ${waLink ? `<div>${waLink}</div>` : ''}
-                            ${p.alamat ? `<small style="color: var(--text-muted); display:block; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${p.alamat}">${p.alamat}</small>` : ''}
-                        </td>
-                        <td style="font-size: 12.5px; max-width: 220px;">
-                            ${itemsSummary}
-                        </td>
-                        <td>
-                            <strong style="font-family: 'Outfit', sans-serif; font-size: 14px; color: var(--text-main);">${formatRupiah(p.total_harga)}</strong>
-                        </td>
-                        <td>
-                            ${getStatusBadgeHtml(p.status)}
-                        </td>
-                        <td style="text-align: center;">
-                            ${actionsHtml}
-                        </td>
-                    </tr>
+                    <div style="background:white;border-radius:16px;border:1.5px solid ${sc.border};overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);transition:transform 0.2s,box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 20px rgba(0,0,0,0.1)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 8px rgba(0,0,0,0.06)'">
+                        <!-- Card Header: Status & Order No -->
+                        <div style="background:${sc.bg};padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid ${sc.border};">
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <div style="width:34px;height:34px;border-radius:50%;background:${sc.text}20;color:${sc.text};display:flex;align-items:center;justify-content:center;font-size:15px;">
+                                    <i class="fa-solid ${sc.icon}"></i>
+                                </div>
+                                <div>
+                                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:${sc.text};">${sc.label}</div>
+                                    <div style="font-size:13.5px;font-weight:800;font-family:'Outfit',sans-serif;color:var(--text-main);">${p.no_pesanan}</div>
+                                </div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:18px;font-weight:800;color:var(--primary-dark);font-family:'Outfit',sans-serif;">${formatRupiah(p.total_harga)}</div>
+                                <div style="font-size:11px;color:var(--text-muted);">${tgl}</div>
+                            </div>
+                        </div>
+
+                        <!-- Card Body: Customer & Items -->
+                        <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px;">
+                            <!-- Customer Info -->
+                            <div style="display:flex;align-items:flex-start;gap:10px;">
+                                <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#059669,#0284c7);color:white;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0;">
+                                    ${(p.nama_pemesan || 'P').charAt(0).toUpperCase()}
+                                </div>
+                                <div style="flex:1;min-width:0;">
+                                    <div style="font-weight:700;font-size:14px;color:var(--text-main);">${p.nama_pemesan}</div>
+                                    <div style="font-size:12px;margin-top:1px;">${waHtml}</div>
+                                    ${p.alamat ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;" title="${p.alamat}"><i class="fa-solid fa-location-dot" style="color:#94a3b8;"></i> ${p.alamat}</div>` : ''}
+                                </div>
+                            </div>
+
+                            <!-- Items -->
+                            <div style="background:#f8fafc;border-radius:10px;padding:10px 12px;">
+                                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px;"><i class="fa-solid fa-bag-shopping"></i> Item Pesanan</div>
+                                ${itemsHtml}
+                            </div>
+                        </div>
+
+                        <!-- Card Footer: Actions -->
+                        <div style="padding:12px 16px;border-top:1px solid var(--light-border);background:#f8fafc;display:flex;gap:8px;align-items:center;">
+                            ${actionBtns}
+                        </div>
+                    </div>
                 `;
             }).join('');
         }
