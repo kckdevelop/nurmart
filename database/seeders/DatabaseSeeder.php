@@ -16,7 +16,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Akun Pemilik
+        // 1. Akun Pemilik (default dev)
         $pemilik = User::firstOrCreate(
             ['email' => 'pemilik@nurmart.com'],
             [
@@ -26,7 +26,17 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // 2. Akun Kasir
+        // 2. Akun Pemilik Asli (Nurohman)
+        User::updateOrCreate(
+            ['email' => 'nurohman11@gmail.com'],
+            [
+                'name' => 'Nurohman',
+                'password' => Hash::make('password123'),
+                'role' => 'pemilik',
+            ]
+        );
+
+        // 3. Akun Kasir
         $kasir = User::firstOrCreate(
             ['email' => 'kasir@nurmart.com'],
             [
