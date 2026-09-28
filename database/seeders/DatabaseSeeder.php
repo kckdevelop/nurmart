@@ -139,5 +139,70 @@ class DatabaseSeeder extends Seeder
                 'gambar_url' => null,
             ]
         );
+
+        // 6. Contoh Catatan Pesanan Online Marketplace (Shopee, Tokopedia, dll)
+        \App\Models\CatatanPesanan::firstOrCreate(
+            ['judul' => 'Restok Beras & Minyak SunCo (Shopee Official Store)'],
+            [
+                'user_id' => $pemilik->id,
+                'marketplace' => 'Shopee',
+                'nomor_resi' => 'SPXID04829103847',
+                'nama_toko' => 'Wings Official Shop / Distributor Sembako',
+                'status' => 'dalam_perjalanan',
+                'tanggal_pesan' => now()->subDays(2)->toDateString(),
+                'estimasi_datang' => now()->addDays(1)->toDateString(),
+                'total_nilai' => 850000,
+                'catatan_teks' => '<h3><span style="color: #ea580c;"><strong>📦 Pesanan Shopee - Restok Toko</strong></span></h3>
+<p>Pesanan telah dikirim oleh penjual via SPX Express. Mohon kasir cek paket saat kurir tiba.</p>
+<table style="border-collapse: collapse; width: 100%;" border="1">
+<thead>
+<tr style="background-color: #f1f5f9;">
+<th style="padding: 8px; text-align: left;">Nama Barang</th>
+<th style="padding: 8px; text-align: center;">Jumlah</th>
+<th style="padding: 8px; text-align: right;">Estimasi Harga</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 8px;">Minyak Goreng SunCo 2L (Karton)</td>
+<td style="padding: 8px; text-align: center;">5 Karton (30 Pouch)</td>
+<td style="padding: 8px; text-align: right;">Rp 510.000</td>
+</tr>
+<tr>
+<td style="padding: 8px;">Gula Pasir Gulaku Premium 1kg</td>
+<td style="padding: 8px; text-align: center;">20 Bungkus</td>
+<td style="padding: 8px; text-align: right;">Rp 340.000</td>
+</tr>
+</tbody>
+</table>
+<p><br><strong>Catatan Tambahan:</strong></p>
+<ul>
+<li>Gunakan voucher gratis ongkir &amp; cashback koin.</li>
+<li>Periksa segel kardus sebelum tanda tangan terima paket.</li>
+</ul>',
+            ]
+        );
+
+        \App\Models\CatatanPesanan::firstOrCreate(
+            ['judul' => 'Sabun Mandi & Deterjen Bubuk (Tokopedia)'],
+            [
+                'user_id' => $pemilik->id,
+                'marketplace' => 'Tokopedia',
+                'nomor_resi' => 'TKP01-99882211',
+                'nama_toko' => 'Unilever Wholesale Official',
+                'status' => 'belum_datang',
+                'tanggal_pesan' => now()->subDay()->toDateString(),
+                'estimasi_datang' => now()->addDays(3)->toDateString(),
+                'total_nilai' => 460000,
+                'catatan_teks' => '<h3><span style="color: #16a34a;"><strong>📦 Pesanan Tokopedia - Kebutuhan Cuci &amp; Mandi</strong></span></h3>
+<p>Status: Penjual sedang menyiapkan barang di gudang pusat.</p>
+<ul>
+<li>Lifebuoy Sabun Cair 450ml (12 pcs)</li>
+<li>Rinso Molto Deterjen 770g (10 pcs)</li>
+<li>Sunlight Jeruk Nipis 700ml (1 Dus)</li>
+</ul>
+<p><em>Harap langsung masukkan ke rak display setelah dibongkar.</em></p>',
+            ]
+        );
     }
 }

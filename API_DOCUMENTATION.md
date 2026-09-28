@@ -1049,6 +1049,84 @@ class ApiService {
 }
 ```
 
+### 5.11 Modul Catatan Pesanan Marketplace (Shopee, Tokopedia, dll - TinyMCE)
+
+Endpoint untuk mencatat dan memantau pesanan restok online dari marketplace (Shopee, Tokopedia, TikTok Shop, Lazada, Blibli, dll) yang belum tiba/dalam perjalanan.
+
+#### 1. Daftar Catatan Pesanan
+- **Endpoint**: `GET /api/catatan-pesanan`
+- **Akses**: Kasir & Pemilik Toko
+- **Query Params**:
+  - `marketplace` (string, opsional: `Shopee`, `Tokopedia`, `TikTok Shop`, `Lazada`, `Blibli`, `Lainnya`, `semua`)
+  - `status` (string, opsional: `belum_datang`, `dalam_perjalanan`, `sebagian_datang`, `selesai`, `dibatalkan`, `semua`)
+  - `search` (string, opsional: cari judul, nomor resi, nama toko, isi catatan)
+- **Response (200 OK)**:
+  ```json
+  {
+    "status": true,
+    "message": "Data catatan pesanan online berhasil dimuat.",
+    "stats": {
+      "total": 5,
+      "belum_datang": 2,
+      "dalam_perjalanan": 2,
+      "sebagian_datang": 0,
+      "selesai": 1
+    },
+    "data": [
+      {
+        "id": 1,
+        "user_id": 1,
+        "judul": "Restok Beras & Minyak SunCo (Shopee Official Store)",
+        "marketplace": "Shopee",
+        "nomor_resi": "SPXID04829103847",
+        "nama_toko": "Wings Official Shop",
+        "status": "dalam_perjalanan",
+        "tanggal_pesan": "2026-09-26",
+        "estimasi_datang": "2026-09-29",
+        "total_nilai": "850000.00",
+        "catatan_teks": "<h3>📦 Pesanan Shopee - Restok Toko</h3>...",
+        "created_at": "2026-09-28T13:25:00.000000Z",
+        "updated_at": "2026-09-28T13:25:00.000000Z",
+        "user": {
+          "id": 1,
+          "name": "Haji Mansyur",
+          "role": "pemilik"
+        }
+      }
+    ]
+  }
+  ```
+
+#### 2. Tambah Catatan Pesanan Baru
+- **Endpoint**: `POST /api/catatan-pesanan`
+- **Akses**: Kasir & Pemilik Toko
+- **Request Body**:
+  ```json
+  {
+    "judul": "Restok Sabun Mandi & Deterjen (Tokopedia)",
+    "marketplace": "Tokopedia",
+    "nomor_resi": "TKP01-99882211",
+    "nama_toko": "Unilever Wholesale Official",
+    "status": "belum_datang",
+    "tanggal_pesan": "2026-09-28",
+    "estimasi_datang": "2026-10-01",
+    "total_nilai": 460000,
+    "catatan_teks": "<h3>Pesanan Tokopedia</h3><p>Item: Rinso, Lifebuoy</p>"
+  }
+  ```
+
+#### 3. Detail Catatan Pesanan
+- **Endpoint**: `GET /api/catatan-pesanan/{id}`
+- **Akses**: Kasir & Pemilik Toko
+
+#### 4. Update Catatan Pesanan
+- **Endpoint**: `PUT /api/catatan-pesanan/{id}`
+- **Akses**: Kasir & Pemilik Toko
+
+#### 5. Hapus Catatan Pesanan
+- **Endpoint**: `DELETE /api/catatan-pesanan/{id}`
+- **Akses**: Kasir & Pemilik Toko
+
 ---
 
 ## 7. Changelog & Versi API
@@ -1058,6 +1136,7 @@ class ApiService {
 | **v1.0.0** | 24 September 2026 | Inisialisasi Backend: Auth Sanctum, Master Barang, Kategori, Supplier, Belanja, Penjualan POS, dan Cetak Struk PDF. |
 | **v1.1.0** | 25 September 2026 | Penambahan Hak Akses RBAC 3-Level (`super_admin`, `admin`, `kasir`), Laporan Laba/Rugi, dan Dashboard Analytics. |
 | **v1.2.0** | 27 September 2026 | Penambahan Katalog Publik (`/public/produk`, `/public/cek-stok`, `/public/pesanan`) dan Modul Manajemen Pesanan Masuk Admin (`/pesanan`). |
+| **v1.3.0** | 28 September 2026 | Penambahan Fitur Catatan Pesanan Marketplace Online (Shopee, Tokopedia, dll) dengan Integrasi TinyMCE Rich Text Editor & Tracking Resi. |
 
 ---
 

@@ -16,6 +16,9 @@
     <!-- Canvas Confetti for Checkout celebrations -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 
+    <!-- TinyMCE Rich Text Editor -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.3/tinymce.min.js" referrerpolicy="origin"></script>
+
     <style>
         :root {
             --primary: #059669;
@@ -41,6 +44,97 @@
             --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -2px rgba(0,0,0,0.04);
             --shadow-lg: 0 10px 25px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.05);
             --shadow-glow: 0 0 20px rgba(16, 185, 129, 0.25);
+        }
+
+        /* Marketplace Badges & Themes */
+        .mp-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11.5px;
+            font-weight: 700;
+            text-transform: capitalize;
+            letter-spacing: 0.3px;
+        }
+        .mp-shopee { background: #fff1ee; color: #ee4d2d; border: 1px solid #fedcd5; }
+        .mp-tokopedia { background: #f0fdf4; color: #03ac0e; border: 1px solid #bbf7d0; }
+        .mp-tiktok { background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; }
+        .mp-lazada { background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; }
+        .mp-blibli { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
+        .mp-lainnya { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+
+        /* Catatan Card Styling */
+        .catatan-card {
+            background: white;
+            border: 1px solid var(--light-border);
+            border-radius: var(--radius-lg);
+            padding: 18px;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+        }
+        .catatan-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: #cbd5e1;
+        }
+        .catatan-card.border-shopee { border-left: 4px solid #ee4d2d; }
+        .catatan-card.border-tokopedia { border-left: 4px solid #03ac0e; }
+        .catatan-card.border-tiktok { border-left: 4px solid #0f172a; }
+        .catatan-card.border-lazada { border-left: 4px solid #4338ca; }
+        .catatan-card.border-blibli { border-left: 4px solid #0284c7; }
+        .catatan-card.border-lainnya { border-left: 4px solid #64748b; }
+
+        .catatan-preview-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 12px 0;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #334155;
+            max-height: 140px;
+            overflow-y: auto;
+        }
+        .catatan-preview-box table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            margin: 6px 0;
+        }
+        .catatan-preview-box th, .catatan-preview-box td {
+            border: 1px solid #cbd5e1;
+            padding: 4px 6px;
+        }
+        .catatan-preview-box ul, .catatan-preview-box ol {
+            padding-left: 18px;
+            margin: 4px 0;
+        }
+
+        .btn-template-pill {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s;
+        }
+        .btn-template-pill:hover {
+            background: #e2e8f0;
+            color: var(--text-main);
+            border-color: #cbd5e1;
         }
 
         * {
@@ -1309,6 +1403,10 @@
                 <button id="nav-btn-belanja" class="nav-btn" onclick="switchTab('belanja')">
                     <i class="fa-solid fa-truck-ramp-box"></i> Belanja Stok
                 </button>
+                <button id="nav-btn-catatan" class="nav-btn" onclick="switchTab('catatan')" title="Catatan Pesanan Online Marketplace (Shopee, Tokopedia, dll) yang belum datang">
+                    <i class="fa-solid fa-clipboard-list"></i> Catatan Marketplace
+                    <span id="badge-catatan-belum-datang" style="display:none; background:#ea580c; color:white; font-size:10px; font-weight:800; padding:1px 6px; border-radius:999px; margin-left:4px;">0</span>
+                </button>
                 <button id="nav-btn-laporan" class="nav-btn" onclick="switchTab('laporan')">
                     <i class="fa-solid fa-file-invoice-dollar"></i> Laba Rugi
                 </button>
@@ -2129,6 +2227,117 @@
             </div>
         </section>
 
+        <!-- ========================================== -->
+        <!-- TAB 8: CATATAN PESANAN MARKETPLACE (TINYMCE) -->
+        <!-- ========================================== -->
+        <section id="tab-catatan" class="tab-panel">
+            <!-- Metric Cards -->
+            <div class="grid-metrics">
+                <div class="metric-card amber">
+                    <div class="metric-info">
+                        <h4>Total Catatan Belanja</h4>
+                        <div class="value" id="catatan-metric-total">0</div>
+                    </div>
+                    <div class="metric-icon"><i class="fa-solid fa-clipboard-list"></i></div>
+                </div>
+                <div class="metric-card red">
+                    <div class="metric-info">
+                        <h4>Belum Datang / Disiapkan</h4>
+                        <div class="value" id="catatan-metric-belum-datang">0</div>
+                    </div>
+                    <div class="metric-icon"><i class="fa-solid fa-box-archive"></i></div>
+                </div>
+                <div class="metric-card blue">
+                    <div class="metric-info">
+                        <h4>Sedang Dalam Perjalanan</h4>
+                        <div class="value" id="catatan-metric-dalam-perjalanan">0</div>
+                    </div>
+                    <div class="metric-icon"><i class="fa-solid fa-truck-fast"></i></div>
+                </div>
+                <div class="metric-card green">
+                    <div class="metric-info">
+                        <h4>Selesai / Diterima Toko</h4>
+                        <div class="value" id="catatan-metric-selesai">0</div>
+                    </div>
+                    <div class="metric-icon"><i class="fa-solid fa-circle-check"></i></div>
+                </div>
+            </div>
+
+            <!-- Banner Marketplace Reminder -->
+            <div style="background: linear-gradient(135deg, #fff7ed, #ffedd5); border: 1px solid #fed7aa; border-radius: var(--radius-lg); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; color: #9a3412;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: #ea580c; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 4px 10px rgba(234, 88, 12, 0.25);">
+                        <i class="fa-solid fa-cart-flatbed"></i>
+                    </div>
+                    <div>
+                        <strong style="font-size: 15px; display: block; margin-bottom: 2px;">Pantau Pesanan Masuk Shopee, Tokopedia &amp; Marketplace Lain</strong>
+                        <p style="font-size: 12.5px; margin: 0; color: #c2410c;">Gunakan TinyMCE Rich Text Editor untuk mencatat daftar barang pesanan restok online, nomor resi kurir, tabel rincian item, dan checklist penerimaan barang saat kurir tiba.</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-primary" style="background: #ea580c; white-space: nowrap;" onclick="openModalCatatan()">
+                    <i class="fa-solid fa-plus"></i> Tulis Catatan Baru
+                </button>
+            </div>
+
+            <!-- Table Card / Grid Container -->
+            <div class="table-card">
+                <div class="table-header">
+                    <h3>
+                        <i class="fa-solid fa-clipboard-check" style="color: #ea580c;"></i>
+                        <span>Daftar Catatan Pesanan Belanja Online</span>
+                    </h3>
+
+                    <!-- Filter Controls -->
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <div style="position: relative;">
+                            <input type="text" id="search-catatan-input" class="form-control" placeholder="Cari judul, resi, toko..." style="width: 220px; padding-left: 32px;" oninput="filterCatatanList()">
+                            <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 13px;"></i>
+                        </div>
+
+                        <select id="filter-catatan-marketplace-select" class="form-control" style="width: 160px;" onchange="filterCatatanMarketplace(this.value)">
+                            <option value="semua">Semua Marketplace</option>
+                            <option value="Shopee">🟠 Shopee</option>
+                            <option value="Tokopedia">🟢 Tokopedia</option>
+                            <option value="TikTok Shop">⚫ TikTok Shop</option>
+                            <option value="Lazada">🔵 Lazada</option>
+                            <option value="Blibli">🔷 Blibli</option>
+                            <option value="Lainnya">📦 Lainnya / Grosir</option>
+                        </select>
+
+                        <select id="filter-catatan-status-select" class="form-control" style="width: 170px;" onchange="filterCatatanStatus(this.value)">
+                            <option value="semua">Semua Status</option>
+                            <option value="belum_datang">⏳ Belum Datang</option>
+                            <option value="dalam_perjalanan">🚚 Dalam Perjalanan</option>
+                            <option value="sebagian_datang">📦 Sebagian Datang</option>
+                            <option value="selesai">✅ Selesai / Diterima</option>
+                            <option value="dibatalkan">❌ Dibatalkan</option>
+                        </select>
+
+                        <button class="btn-sm-action" onclick="loadCatatanTab()" title="Muat ulang data catatan">
+                            <i class="fa-solid fa-arrows-rotate"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Cards Grid -->
+                <div id="catatan-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 18px;">
+                    <!-- Loaded via JS -->
+                </div>
+
+                <!-- Fallback empty/loading state -->
+                <div id="catatan-empty-state" style="display: none; text-align: center; padding: 50px 20px; color: var(--text-muted);">
+                    <div style="width: 70px; height: 70px; background: #fff7ed; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 32px; color: #ea580c; margin-bottom: 14px;">
+                        <i class="fa-solid fa-clipboard"></i>
+                    </div>
+                    <p style="font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 4px;">Belum Ada Catatan Pesanan</p>
+                    <p style="font-size: 13px; max-width: 420px; margin: 0 auto 16px;">Tulis catatan pesanan online dari Shopee, Tokopedia, TikTok Shop, dll. yang sedang menunggu pengiriman kurir.</p>
+                    <button type="button" class="btn-primary" style="background: #ea580c;" onclick="openModalCatatan()">
+                        <i class="fa-solid fa-plus"></i> Buat Catatan Pertama
+                    </button>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <!-- ========================================== -->
@@ -2552,6 +2761,156 @@
         </div>
     </div>
 
+    <!-- ========================================== -->
+    <!-- MODAL 8: TULIS / EDIT CATATAN MARKETPLACE (TINYMCE) -->
+    <!-- ========================================== -->
+    <div id="modal-catatan-pesanan" class="modal-overlay">
+        <div class="modal-box" style="max-width: 860px; width: 95%;">
+            <div class="modal-header">
+                <div>
+                    <h3 id="modal-catatan-title" style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-file-pen" style="color: #ea580c;"></i>
+                        <span>Tulis Catatan Pesanan Marketplace</span>
+                    </h3>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Catat pesanan barang dari Shopee, Tokopedia, dll. yang belum tiba dengan TinyMCE editor.</p>
+                </div>
+                <button class="modal-close" onclick="closeModal('modal-catatan-pesanan')">&times;</button>
+            </div>
+
+            <form id="form-catatan-pesanan" onsubmit="saveCatatanModal(event)">
+                <input type="hidden" id="modal-catatan-id">
+
+                <div class="modal-body" style="max-height: 75vh; overflow-y: auto; padding: 20px;">
+                    <!-- Judul Catatan -->
+                    <div class="form-group">
+                        <label style="font-weight: 700;">Judul Catatan / Deskripsi Singkat <span style="color: var(--danger);">*</span></label>
+                        <input type="text" id="modal-catatan-judul" class="form-control" placeholder="Contoh: Restok Minyak Goreng &amp; Beras - Shopee Mall" required>
+                    </div>
+
+                    <!-- Marketplace & Toko & Resi -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-weight: 700;">Marketplace / Sumber Belanja <span style="color: var(--danger);">*</span></label>
+                            <select id="modal-catatan-marketplace" class="form-control" required>
+                                <option value="Shopee">🟠 Shopee</option>
+                                <option value="Tokopedia">🟢 Tokopedia</option>
+                                <option value="TikTok Shop">⚫ TikTok Shop</option>
+                                <option value="Lazada">🔵 Lazada</option>
+                                <option value="Blibli">🔷 Blibli</option>
+                                <option value="Lainnya">📦 Lainnya / Distributor Grosir</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-weight: 700;">Status Pesanan <span style="color: var(--danger);">*</span></label>
+                            <select id="modal-catatan-status" class="form-control" required>
+                                <option value="belum_datang">⏳ Belum Datang (Diproses Penjual)</option>
+                                <option value="dalam_perjalanan">🚚 Dalam Perjalanan (Kurir)</option>
+                                <option value="sebagian_datang">📦 Sebagian Sudah Datang</option>
+                                <option value="selesai">✅ Selesai / Diterima Lengkap</option>
+                                <option value="dibatalkan">❌ Dibatalkan / Refund</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-weight: 600;">Nama Toko / Penjual</label>
+                            <input type="text" id="modal-catatan-toko" class="form-control" placeholder="Contoh: Unilever Official Store">
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-weight: 600;">No. Resi / ID Pesanan</label>
+                            <input type="text" id="modal-catatan-resi" class="form-control" placeholder="Contoh: SPXID0129384729">
+                        </div>
+                    </div>
+
+                    <!-- Tanggal Pesan, Estimasi Datang, Total Nilai -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 18px;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-weight: 600;">Tanggal Pesan</label>
+                            <input type="date" id="modal-catatan-tgl-pesan" class="form-control">
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-weight: 600;">Estimasi Tiba / Datang</label>
+                            <input type="date" id="modal-catatan-tgl-estimasi" class="form-control">
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-weight: 600;">Total Biaya / Belanja (Rp)</label>
+                            <input type="number" id="modal-catatan-total" class="form-control" placeholder="0" min="0">
+                        </div>
+                    </div>
+
+                    <!-- Quick Template Buttons for TinyMCE -->
+                    <div style="background: #f8fafc; border: 1px dashed var(--light-border); border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                        <span style="font-size: 12px; font-weight: 700; color: var(--text-muted);">
+                            <i class="fa-solid fa-wand-magic-sparkles" style="color: #ea580c;"></i> Template Cepat:
+                        </span>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            <button type="button" class="btn-template-pill" onclick="insertCatatanTemplate('shopee')">
+                                <i class="fa-solid fa-bag-shopping" style="color:#ee4d2d;"></i> Format Shopee
+                            </button>
+                            <button type="button" class="btn-template-pill" onclick="insertCatatanTemplate('tokopedia')">
+                                <i class="fa-solid fa-store" style="color:#03ac0e;"></i> Format Tokopedia
+                            </button>
+                            <button type="button" class="btn-template-pill" onclick="insertCatatanTemplate('tabel')">
+                                <i class="fa-solid fa-table"></i> Tabel Rincian Barang
+                            </button>
+                            <button type="button" class="btn-template-pill" onclick="insertCatatanTemplate('checklist')">
+                                <i class="fa-solid fa-list-check"></i> Checklist Penerimaan
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TinyMCE Rich Text Area -->
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
+                            <span><i class="fa-solid fa-pen-nib" style="color: #ea580c;"></i> Rincian Catatan &amp; Daftar Barang (TinyMCE)</span>
+                            <small style="font-size: 11px; color: var(--text-muted); font-weight: normal;">Format teks tebal, tabel, checklist, gambar &amp; tautan didukung</small>
+                        </label>
+                        <textarea id="catatan-editor-textarea" style="width: 100%; height: 320px;"></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-sm-action" onclick="closeModal('modal-catatan-pesanan')">Batal</button>
+                    <button type="submit" id="btn-save-catatan-modal" class="btn-primary" style="background: #ea580c;">
+                        <i class="fa-solid fa-floppy-disk"></i> Simpan Catatan Pesanan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL 9: KONFIRMASI HAPUS CATATAN          -->
+    <!-- ========================================== -->
+    <div id="modal-delete-catatan" class="modal-overlay">
+        <div class="modal-box" style="max-width: 480px;">
+            <div class="modal-header" style="background: #fee2e2; border-bottom: 1px solid #fecaca;">
+                <h3 style="color: #991b1b; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-trash-can"></i> Hapus Catatan Pesanan?
+                </h3>
+                <button class="modal-close" onclick="closeModal('modal-delete-catatan')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 14px; line-height: 1.5; margin-bottom: 12px;">
+                    Anda akan menghapus catatan pesanan: <br>
+                    <strong id="delete-catatan-judul-label" style="color: #991b1b; display: block; margin-top: 4px;">-</strong>
+                </p>
+                <div style="background: #fef2f2; border: 1px solid #fca5a5; padding: 12px; border-radius: var(--radius-sm); font-size: 13px; color: #991b1b;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Catatan ini akan dihapus secara permanen dari daftar riwayat pesanan online.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-sm-action" onclick="closeModal('modal-delete-catatan')">Batal</button>
+                <button type="button" id="btn-confirm-delete-catatan" class="btn-primary" style="background: #ef4444;" onclick="executeDeleteCatatan()">
+                    <i class="fa-solid fa-trash-can"></i> Ya, Hapus Catatan
+                </button>
+            </div>
+        </div>
+    </div>
+
     </div><!-- END screen-main -->
     <!-- END OF SCREEN 2: MAIN DASHBOARD & POS -->
 
@@ -2578,6 +2937,13 @@
         let allPesanan = [];
         let currentPesananFilterStatus = 'semua';
         let activeDetailPesanan = null;
+
+        // Catatan Marketplace State
+        let allCatatan = [];
+        let currentCatatanFilterMarketplace = 'semua';
+        let currentCatatanFilterStatus = 'semua';
+        let deleteTargetCatatan = null;
+        let isTinyMceInitialized = false;
 
         // Login & Authentication Management
         function togglePasswordVisibility() {
@@ -2734,8 +3100,8 @@
         // ============================================
         // ROLE-BASED UI ACCESS CONTROL
         // ============================================
-        const KASIR_ALLOWED_TABS = ['pos', 'pesanan'];
-        const PEMILIK_ONLY_TABS = ['dasbor', 'barang', 'belanja', 'laporan', 'pengaturan', 'pesanan'];
+        const KASIR_ALLOWED_TABS = ['pos', 'pesanan', 'catatan'];
+        const PEMILIK_ONLY_TABS = ['dasbor', 'barang', 'belanja', 'catatan', 'laporan', 'pengaturan', 'pesanan'];
 
         function applyRoleBasedUI() {
             if (currentRole === 'kasir') {
@@ -2744,11 +3110,13 @@
                     const btn = document.getElementById(`nav-btn-${tab}`);
                     if (btn) btn.style.display = 'none';
                 });
-                // Pastikan tab POS & Pesanan terlihat
+                // Pastikan tab POS, Pesanan, & Catatan terlihat
                 const posBtn = document.getElementById('nav-btn-pos');
                 if (posBtn) posBtn.style.display = 'inline-flex';
                 const pesananBtn = document.getElementById('nav-btn-pesanan');
                 if (pesananBtn) pesananBtn.style.display = 'inline-flex';
+                const catatanBtn = document.getElementById('nav-btn-catatan');
+                if (catatanBtn) catatanBtn.style.display = 'inline-flex';
                 
                 // Sembunyikan tombol ganti role
                 const switchBtn = document.getElementById('btn-switch-role');
@@ -2763,6 +3131,8 @@
                 if (posBtn) posBtn.style.display = '';
                 const pesananBtn = document.getElementById('nav-btn-pesanan');
                 if (pesananBtn) pesananBtn.style.display = '';
+                const catatanBtn = document.getElementById('nav-btn-catatan');
+                if (catatanBtn) catatanBtn.style.display = '';
                 
                 // Tampilkan tombol ganti role (hanya untuk dev/demo)
                 const switchBtn = document.getElementById('btn-switch-role');
@@ -2774,7 +3144,7 @@
         function switchTab(tabId) {
             // Blokir akses tab terlarang untuk kasir
             if (currentRole === 'kasir' && !KASIR_ALLOWED_TABS.includes(tabId)) {
-                showToast('Akses ditolak: Kasir hanya dapat mengakses halaman Kasir POS dan Pesanan.', 'error');
+                showToast('Akses ditolak: Kasir hanya dapat mengakses halaman Kasir POS, Pesanan, dan Catatan.', 'error');
                 return;
             }
 
@@ -2797,6 +3167,7 @@
             // Trigger specific loaders
             if (tabId === 'dasbor') loadDashboard();
             if (tabId === 'pesanan') loadPesananTab();
+            if (tabId === 'catatan') loadCatatanTab();
             if (tabId === 'pos') loadPosProducts();
             if (tabId === 'barang') loadMasterBarang();
             if (tabId === 'belanja') loadBelanjaTab();
@@ -4634,6 +5005,553 @@
             }
         }
 
+        // ============================================
+        // 9. CATATAN PESANAN MARKETPLACE (TINYMCE)
+        // ============================================
+
+        // Inisialisasi TinyMCE Editor
+        function initTinyMceEditor() {
+            if (typeof tinymce === 'undefined') {
+                console.warn('TinyMCE library belum selesai dimuat.');
+                return;
+            }
+
+            if (tinymce.get('catatan-editor-textarea')) {
+                return; // Sudah terinisialisasi
+            }
+
+            tinymce.init({
+                selector: '#catatan-editor-textarea',
+                height: 320,
+                menubar: false,
+                branding: false,
+                promotion: false,
+                plugins: 'advlist autolink lists link charmap preview searchreplace visualblocks code insertdatetime table help wordcount',
+                toolbar: 'undo redo | blocks | bold italic underline forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table link | removeformat code',
+                content_style: "body { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13.5px; line-height: 1.6; color: #1e293b; padding: 8px; } table { width: 100%; border-collapse: collapse; margin: 8px 0; } th, td { border: 1px solid #cbd5e1; padding: 6px 8px; } th { background-color: #f8fafc; font-weight: 700; }",
+                setup: function (editor) {
+                    editor.on('init', function () {
+                        isTinyMceInitialized = true;
+                    });
+                }
+            });
+        }
+
+        // Muat Data Tab Catatan Marketplace
+        async function loadCatatanTab() {
+            initTinyMceEditor();
+
+            const grid = document.getElementById('catatan-cards-grid');
+            const emptyState = document.getElementById('catatan-empty-state');
+            
+            try {
+                const res = await fetch(`${API_BASE}/catatan-pesanan`, { headers: apiHeaders() });
+                const json = await res.json();
+
+                if (json.status && json.data) {
+                    allCatatan = json.data;
+
+                    // Update Metrics
+                    const stats = json.stats || {};
+                    document.getElementById('catatan-metric-total').textContent = stats.total || 0;
+                    document.getElementById('catatan-metric-belum-datang').textContent = stats.belum_datang || 0;
+                    document.getElementById('catatan-metric-dalam-perjalanan').textContent = stats.dalam_perjalanan || 0;
+                    document.getElementById('catatan-metric-selesai').textContent = stats.selesai || 0;
+
+                    // Update Navbar Badge (Belum Datang + Dalam Perjalanan)
+                    const pendingCount = (stats.belum_datang || 0) + (stats.dalam_perjalanan || 0);
+                    const badge = document.getElementById('badge-catatan-belum-datang');
+                    if (badge) {
+                        if (pendingCount > 0) {
+                            badge.textContent = pendingCount;
+                            badge.style.display = 'inline-block';
+                        } else {
+                            badge.style.display = 'none';
+                        }
+                    }
+
+                    filterCatatanList();
+                } else {
+                    showToast(json.message || 'Gagal memuat catatan pesanan.', 'error');
+                }
+            } catch (err) {
+                console.error('Error load catatan:', err);
+                showToast('Terjadi kesalahan jaringan saat memuat catatan pesanan.', 'error');
+            }
+        }
+
+        // Filter realtime catatan list
+        function filterCatatanList() {
+            const search = (document.getElementById('search-catatan-input')?.value || '').toLowerCase().trim();
+            const mpFilter = document.getElementById('filter-catatan-marketplace-select')?.value || 'semua';
+            const statusFilter = document.getElementById('filter-catatan-status-select')?.value || 'semua';
+
+            const filtered = allCatatan.filter(item => {
+                const matchMp = (mpFilter === 'semua' || item.marketplace === mpFilter);
+                const matchStatus = (statusFilter === 'semua' || item.status === statusFilter);
+                
+                const matchSearch = !search || 
+                    (item.judul && item.judul.toLowerCase().includes(search)) ||
+                    (item.nomor_resi && item.nomor_resi.toLowerCase().includes(search)) ||
+                    (item.nama_toko && item.nama_toko.toLowerCase().includes(search)) ||
+                    (item.catatan_teks && item.catatan_teks.toLowerCase().includes(search));
+
+                return matchMp && matchStatus && matchSearch;
+            });
+
+            renderCatatanCards(filtered);
+        }
+
+        function filterCatatanMarketplace(val) {
+            currentCatatanFilterMarketplace = val;
+            filterCatatanList();
+        }
+
+        function filterCatatanStatus(val) {
+            currentCatatanFilterStatus = val;
+            filterCatatanList();
+        }
+
+        // Helper Badge Marketplace
+        function getMarketplaceBadgeHtml(mp) {
+            const lower = (mp || 'shopee').toLowerCase();
+            if (lower.includes('shopee')) {
+                return `<span class="mp-badge mp-shopee"><i class="fa-solid fa-bag-shopping"></i> Shopee</span>`;
+            } else if (lower.includes('tokopedia')) {
+                return `<span class="mp-badge mp-tokopedia"><i class="fa-solid fa-store"></i> Tokopedia</span>`;
+            } else if (lower.includes('tiktok')) {
+                return `<span class="mp-badge mp-tiktok"><i class="fa-brands fa-tiktok"></i> TikTok Shop</span>`;
+            } else if (lower.includes('lazada')) {
+                return `<span class="mp-badge mp-lazada"><i class="fa-solid fa-gem"></i> Lazada</span>`;
+            } else if (lower.includes('blibli')) {
+                return `<span class="mp-badge mp-blibli"><i class="fa-solid fa-cube"></i> Blibli</span>`;
+            } else {
+                return `<span class="mp-badge mp-lainnya"><i class="fa-solid fa-boxes-stacked"></i> ${mp || 'Lainnya'}</span>`;
+            }
+        }
+
+        // Helper Badge Status Catatan
+        function getCatatanStatusBadgeHtml(status) {
+            switch (status) {
+                case 'belum_datang':
+                    return `<span class="status-badge" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a;"><i class="fa-solid fa-clock"></i> Belum Datang</span>`;
+                case 'dalam_perjalanan':
+                    return `<span class="status-badge" style="background:#e0f2fe; color:#0284c7; border:1px solid #bae6fd;"><i class="fa-solid fa-truck-fast"></i> Dalam Perjalanan</span>`;
+                case 'sebagian_datang':
+                    return `<span class="status-badge" style="background:#f3e8ff; color:#7e22ce; border:1px solid #e9d5ff;"><i class="fa-solid fa-box-open"></i> Sebagian Datang</span>`;
+                case 'selesai':
+                    return `<span class="status-badge" style="background:#dcfce7; color:#15803d; border:1px solid #bbf7d0;"><i class="fa-solid fa-circle-check"></i> Selesai / Diterima</span>`;
+                case 'dibatalkan':
+                    return `<span class="status-badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca;"><i class="fa-solid fa-ban"></i> Dibatalkan</span>`;
+                default:
+                    return `<span class="status-badge">${status}</span>`;
+            }
+        }
+
+        // Render Card Catatan
+        function renderCatatanCards(items) {
+            const grid = document.getElementById('catatan-cards-grid');
+            const emptyState = document.getElementById('catatan-empty-state');
+
+            if (!items || items.length === 0) {
+                grid.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+
+            grid.innerHTML = items.map(c => {
+                const mpClass = 'border-' + (c.marketplace || 'lainnya').toLowerCase().replace(/\s+/g, '');
+                
+                // Resi HTML
+                let resiHtml = '<span style="color:#94a3b8;">Tidak ada resi</span>';
+                if (c.nomor_resi) {
+                    resiHtml = `
+                        <div style="display:inline-flex; align-items:center; gap:6px; background:#f1f5f9; padding:2px 8px; border-radius:6px; font-family:monospace; font-size:12px; font-weight:700; color:#0f172a;">
+                            <span>${c.nomor_resi}</span>
+                            <button type="button" onclick="copyTrackingNumber('${c.nomor_resi.replace(/'/g, "\\'")}')" style="background:none; border:none; color:#0284c7; cursor:pointer; padding:0;" title="Salin nomor resi">
+                                <i class="fa-solid fa-copy"></i>
+                            </button>
+                        </div>
+                    `;
+                }
+
+                // Estimasi info
+                let estimasiHtml = '';
+                if (c.estimasi_datang) {
+                    const tgl = new Date(c.estimasi_datang).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+                    estimasiHtml = `<div style="font-size:11.5px; color:#64748b; margin-top:3px;"><i class="fa-solid fa-calendar-day" style="color:#f59e0b;"></i> Estimasi Tiba: <strong>${tgl}</strong></div>`;
+                }
+
+                // Tanggal Pesan
+                let tglPesanHtml = '';
+                if (c.tanggal_pesan) {
+                    const tglP = new Date(c.tanggal_pesan).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+                    tglPesanHtml = `<span style="font-size:11.5px; color:#64748b;"><i class="fa-regular fa-calendar-check"></i> Dipesan: ${tglP}</span>`;
+                }
+
+                // Total nilai
+                const totalNilaiHtml = c.total_nilai > 0 ? `<div style="font-size:14px; font-weight:800; color:var(--primary-dark);">${formatRupiah(c.total_nilai)}</div>` : '';
+
+                // Content preview (dari TinyMCE HTML)
+                const rawContent = c.catatan_teks || '<p style="color:#94a3b8; font-style:italic;">Tidak ada catatan teks rincian.</p>';
+
+                // Quick Action buttons
+                return `
+                    <div class="catatan-card ${mpClass}">
+                        <div>
+                            <!-- Header Card: Marketplace & Status -->
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                ${getMarketplaceBadgeHtml(c.marketplace)}
+                                ${getCatatanStatusBadgeHtml(c.status)}
+                            </div>
+
+                            <!-- Judul -->
+                            <h4 style="font-size:15px; font-weight:800; color:var(--text-main); margin-bottom:6px; line-height:1.35;">
+                                ${c.judul}
+                            </h4>
+
+                            <!-- Toko & Resi -->
+                            <div style="font-size:12.5px; color:var(--text-muted); margin-bottom:6px;">
+                                <i class="fa-solid fa-shop" style="color:#64748b; margin-right:4px;"></i> <strong>${c.nama_toko || 'Toko Marketplace'}</strong>
+                            </div>
+                            <div style="margin-bottom:8px;">
+                                ${resiHtml}
+                            </div>
+
+                            <!-- Tanggal & Total -->
+                            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed #e2e8f0; border-bottom:1px dashed #e2e8f0; padding:8px 0; margin-bottom:8px;">
+                                <div>
+                                    ${tglPesanHtml}
+                                    ${estimasiHtml}
+                                </div>
+                                <div style="text-align:right;">
+                                    <small style="font-size:10px; color:#64748b; display:block;">NILAI BELANJA</small>
+                                    ${totalNilaiHtml || '<span style="font-size:12px; color:#94a3b8;">-</span>'}
+                                </div>
+                            </div>
+
+                            <!-- Rich Text Preview Box (TinyMCE Content) -->
+                            <div class="catatan-preview-box">
+                                ${rawContent}
+                            </div>
+                        </div>
+
+                        <!-- Footer Actions -->
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; pt:6px; border-top:1px solid #f1f5f9; gap:8px;">
+                            <!-- Dropdown Quick Status -->
+                            <select onchange="quickUpdateCatatanStatus(${c.id}, this.value)" style="padding:5px 8px; border-radius:6px; border:1px solid var(--light-border); font-size:11.5px; font-weight:600; background:#f8fafc; color:#334155; cursor:pointer;">
+                                <option value="belum_datang" ${c.status === 'belum_datang' ? 'selected' : ''}>⏳ Belum Datang</option>
+                                <option value="dalam_perjalanan" ${c.status === 'dalam_perjalanan' ? 'selected' : ''}>🚚 Dalam Perjalanan</option>
+                                <option value="sebagian_datang" ${c.status === 'sebagian_datang' ? 'selected' : ''}>📦 Sebagian Datang</option>
+                                <option value="selesai" ${c.status === 'selesai' ? 'selected' : ''}>✅ Selesai</option>
+                                <option value="dibatalkan" ${c.status === 'dibatalkan' ? 'selected' : ''}>❌ Dibatalkan</option>
+                            </select>
+
+                            <div style="display:flex; gap:6px;">
+                                <button type="button" class="btn-sm-action" style="padding:6px 10px; background:#f8fafc; border-color:#cbd5e1; color:#0284c7;" onclick="openModalCatatan(${c.id})" title="Edit Catatan dengan TinyMCE">
+                                    <i class="fa-solid fa-pen-to-square"></i> Edit
+                                </button>
+                                <button type="button" class="btn-sm-action" style="padding:6px 8px; background:#fef2f2; border-color:#fecaca; color:#ef4444;" onclick="deleteCatatan(${c.id}, '${c.judul.replace(/'/g, "\\'")}')" title="Hapus Catatan">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Buka Modal Catatan (Tambah Baru / Edit)
+        function openModalCatatan(id = null) {
+            initTinyMceEditor();
+
+            const form = document.getElementById('form-catatan-pesanan');
+            const titleEl = document.getElementById('modal-catatan-title');
+            const idInput = document.getElementById('modal-catatan-id');
+
+            if (id === null) {
+                // Mode Tambah
+                titleEl.innerHTML = `<i class="fa-solid fa-file-pen" style="color: #ea580c;"></i> <span>Tulis Catatan Pesanan Baru</span>`;
+                idInput.value = '';
+                document.getElementById('modal-catatan-judul').value = '';
+                document.getElementById('modal-catatan-marketplace').value = 'Shopee';
+                document.getElementById('modal-catatan-status').value = 'belum_datang';
+                document.getElementById('modal-catatan-toko').value = '';
+                document.getElementById('modal-catatan-resi').value = '';
+                document.getElementById('modal-catatan-tgl-pesan').value = new Date().toISOString().split('T')[0];
+                document.getElementById('modal-catatan-tgl-estimasi').value = '';
+                document.getElementById('modal-catatan-total').value = '';
+
+                // Default content TinyMCE
+                const defaultTpl = `<h3><span style="color: #ea580c;"><strong>📦 Pesanan Online Marketplace</strong></span></h3>
+<p>Daftar produk yang telah dipesan dan menunggu pengiriman kurir:</p>
+<table style="border-collapse: collapse; width: 100%;" border="1">
+<thead>
+<tr style="background-color: #f1f5f9;">
+<th style="padding: 8px; text-align: left;">Nama Produk / Varian</th>
+<th style="padding: 8px; text-align: center;">Jumlah (Qty)</th>
+<th style="padding: 8px; text-align: right;">Harga Satuan / Subtotal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 8px;">Contoh: Minyak Goreng 2L</td>
+<td style="padding: 8px; text-align: center;">5 Dus</td>
+<td style="padding: 8px; text-align: right;">Rp 500.000</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Catatan Tambahan:</strong></p>
+<ul>
+<li>Cek kondisi paket saat kurir tiba.</li>
+</ul>`;
+
+                if (tinymce.get('catatan-editor-textarea')) {
+                    tinymce.get('catatan-editor-textarea').setContent(defaultTpl);
+                } else {
+                    document.getElementById('catatan-editor-textarea').value = defaultTpl;
+                }
+            } else {
+                // Mode Edit
+                const item = allCatatan.find(c => c.id === id);
+                if (!item) {
+                    showToast('Catatan tidak ditemukan.', 'error');
+                    return;
+                }
+
+                titleEl.innerHTML = `<i class="fa-solid fa-pen-to-square" style="color: #0284c7;"></i> <span>Edit Catatan: ${item.judul}</span>`;
+                idInput.value = item.id;
+                document.getElementById('modal-catatan-judul').value = item.judul || '';
+                document.getElementById('modal-catatan-marketplace').value = item.marketplace || 'Shopee';
+                document.getElementById('modal-catatan-status').value = item.status || 'belum_datang';
+                document.getElementById('modal-catatan-toko').value = item.nama_toko || '';
+                document.getElementById('modal-catatan-resi').value = item.nomor_resi || '';
+                document.getElementById('modal-catatan-tgl-pesan').value = item.tanggal_pesan ? item.tanggal_pesan.split('T')[0] : '';
+                document.getElementById('modal-catatan-tgl-estimasi').value = item.estimasi_datang ? item.estimasi_datang.split('T')[0] : '';
+                document.getElementById('modal-catatan-total').value = item.total_nilai || '';
+
+                if (tinymce.get('catatan-editor-textarea')) {
+                    tinymce.get('catatan-editor-textarea').setContent(item.catatan_teks || '');
+                } else {
+                    document.getElementById('catatan-editor-textarea').value = item.catatan_teks || '';
+                }
+            }
+
+            openModal('modal-catatan-pesanan');
+        }
+
+        // Simpan Catatan (Create / Update via API)
+        async function saveCatatanModal(e) {
+            e.preventDefault();
+
+            const id = document.getElementById('modal-catatan-id').value;
+            const btn = document.getElementById('btn-save-catatan-modal');
+
+            // Ambil content HTML dari TinyMCE
+            let contentHtml = '';
+            if (tinymce.get('catatan-editor-textarea')) {
+                contentHtml = tinymce.get('catatan-editor-textarea').getContent();
+            } else {
+                contentHtml = document.getElementById('catatan-editor-textarea').value;
+            }
+
+            const payload = {
+                judul: document.getElementById('modal-catatan-judul').value.trim(),
+                marketplace: document.getElementById('modal-catatan-marketplace').value,
+                status: document.getElementById('modal-catatan-status').value,
+                nama_toko: document.getElementById('modal-catatan-toko').value.trim() || null,
+                nomor_resi: document.getElementById('modal-catatan-resi').value.trim() || null,
+                tanggal_pesan: document.getElementById('modal-catatan-tgl-pesan').value || null,
+                estimasi_datang: document.getElementById('modal-catatan-tgl-estimasi').value || null,
+                total_nilai: document.getElementById('modal-catatan-total').value ? Number(document.getElementById('modal-catatan-total').value) : 0,
+                catatan_teks: contentHtml
+            };
+
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...`;
+
+            try {
+                const url = id ? `${API_BASE}/catatan-pesanan/${id}` : `${API_BASE}/catatan-pesanan`;
+                const method = id ? 'PUT' : 'POST';
+
+                const res = await fetch(url, {
+                    method: method,
+                    headers: apiHeaders(),
+                    body: JSON.stringify(payload)
+                });
+
+                const json = await res.json();
+
+                if (json.status) {
+                    showToast(json.message || 'Catatan berhasil disimpan.', 'success');
+                    closeModal('modal-catatan-pesanan');
+                    loadCatatanTab();
+                } else {
+                    showToast(json.message || 'Gagal menyimpan catatan.', 'error');
+                }
+            } catch (err) {
+                console.error('Save catatan error:', err);
+                showToast('Terjadi kesalahan jaringan saat menyimpan catatan.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Simpan Catatan Pesanan`;
+            }
+        }
+
+        // Quick update status dari card
+        async function quickUpdateCatatanStatus(id, newStatus) {
+            try {
+                const res = await fetch(`${API_BASE}/catatan-pesanan/${id}`, {
+                    method: 'PUT',
+                    headers: apiHeaders(),
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                const json = await res.json();
+                if (json.status) {
+                    showToast(`Status catatan diubah menjadi "${newStatus}".`, 'success');
+                    loadCatatanTab();
+                } else {
+                    showToast(json.message || 'Gagal mengubah status.', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Terjadi kesalahan jaringan.', 'error');
+            }
+        }
+
+        // Hapus Catatan
+        function deleteCatatan(id, judul) {
+            deleteTargetCatatan = { id, judul };
+            document.getElementById('delete-catatan-judul-label').textContent = judul;
+            openModal('modal-delete-catatan');
+        }
+
+        async function executeDeleteCatatan() {
+            if (!deleteTargetCatatan) return;
+
+            const btn = document.getElementById('btn-confirm-delete-catatan');
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Menghapus...`;
+
+            try {
+                const res = await fetch(`${API_BASE}/catatan-pesanan/${deleteTargetCatatan.id}`, {
+                    method: 'DELETE',
+                    headers: apiHeaders()
+                });
+                const json = await res.json();
+
+                if (json.status) {
+                    showToast(json.message || 'Catatan pesanan berhasil dihapus.', 'success');
+                    closeModal('modal-delete-catatan');
+                    loadCatatanTab();
+                } else {
+                    showToast(json.message || 'Gagal menghapus catatan.', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Terjadi kesalahan jaringan saat menghapus catatan.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-trash-can"></i> Ya, Hapus Catatan`;
+                deleteTargetCatatan = null;
+            }
+        }
+
+        // Sisipkan template format ke TinyMCE
+        function insertCatatanTemplate(type) {
+            if (!tinymce.get('catatan-editor-textarea')) return;
+
+            let html = '';
+            if (type === 'shopee') {
+                html = `<h3><span style="color: #ee4d2d;"><strong>🟠 Pesanan Shopee Mall / Star Seller</strong></span></h3>
+<p><strong>Nama Toko:</strong> Official Store Sembako<br><strong>Ekspedisi:</strong> SPX Express Standard<br><strong>Estimasi Tiba:</strong> 2-3 Hari Kerja</p>
+<table style="border-collapse: collapse; width: 100%;" border="1">
+<thead>
+<tr style="background-color: #fff1ee;">
+<th style="padding: 8px; text-align: left;">Nama Produk</th>
+<th style="padding: 8px; text-align: center;">Jumlah</th>
+<th style="padding: 8px; text-align: right;">Harga Total</th>
+<th style="padding: 8px; text-align: center;">Status Datang</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 8px;">Minyak Goreng 2L Pouch</td>
+<td style="padding: 8px; text-align: center;">10 Pcs</td>
+<td style="padding: 8px; text-align: right;">Rp 350.000</td>
+<td style="padding: 8px; text-align: center;">⏳ Menunggu Kurir</td>
+</tr>
+</tbody>
+</table>`;
+            } else if (type === 'tokopedia') {
+                html = `<h3><span style="color: #03ac0e;"><strong>🟢 Pesanan Tokopedia Official</strong></span></h3>
+<p><strong>Kurir Pengiriman:</strong> J&amp;T Cargo / SiCepat GOKIL<br><strong>Metode Pembayaran:</strong> Saldo Toko / Transfer Bank</p>
+<table style="border-collapse: collapse; width: 100%;" border="1">
+<thead>
+<tr style="background-color: #f0fdf4;">
+<th style="padding: 8px; text-align: left;">Item Belanja</th>
+<th style="padding: 8px; text-align: center;">Kuantitas</th>
+<th style="padding: 8px; text-align: right;">Estimasi Nilai</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 8px;">Deterjen Bubuk &amp; Sabun Cair (Dus)</td>
+<td style="padding: 8px; text-align: center;">2 Karton</td>
+<td style="padding: 8px; text-align: right;">Rp 280.000</td>
+</tr>
+</tbody>
+</table>`;
+            } else if (type === 'tabel') {
+                html = `<table style="border-collapse: collapse; width: 100%;" border="1">
+<thead>
+<tr style="background-color: #f8fafc;">
+<th style="padding: 8px; text-align: center; width: 40px;">No</th>
+<th style="padding: 8px; text-align: left;">Nama Barang &amp; Spesifikasi</th>
+<th style="padding: 8px; text-align: center;">Jumlah</th>
+<th style="padding: 8px; text-align: right;">Harga Satuan</th>
+<th style="padding: 8px; text-align: right;">Subtotal</th>
+<th style="padding: 8px; text-align: center;">Cek Fisik</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 8px; text-align: center;">1</td>
+<td style="padding: 8px;">Beras Premium 5kg</td>
+<td style="padding: 8px; text-align: center;">5 Karung</td>
+<td style="padding: 8px; text-align: right;">Rp 70.000</td>
+<td style="padding: 8px; text-align: right;">Rp 350.000</td>
+<td style="padding: 8px; text-align: center;">[ &nbsp; ] Utuh</td>
+</tr>
+</tbody>
+</table>`;
+            } else if (type === 'checklist') {
+                html = `<h4><strong>📋 Checklist Penerimaan Barang Saat Tiba:</strong></h4>
+<ul>
+<li>[ &nbsp; ] Cek nomor resi pada kardus sesuai dengan aplikasi.</li>
+<li>[ &nbsp; ] Periksa segel kardus / lakban tidak robek atau basah.</li>
+<li>[ &nbsp; ] Foto / Video unboxing saat membuka paket.</li>
+<li>[ &nbsp; ] Hitung kecocokan jumlah item fisik dengan rincian pesanan.</li>
+<li>[ &nbsp; ] Input penambahan stok ke master produk NURMART.</li>
+</ul>`;
+            }
+
+            tinymce.get('catatan-editor-textarea').insertContent(html);
+        }
+
+        // Salin nomor resi
+        function copyTrackingNumber(resi) {
+            if (!resi) return;
+            navigator.clipboard.writeText(resi).then(() => {
+                showToast(`Nomor resi ${resi} berhasil disalin ke clipboard!`, 'success');
+            }).catch(() => {
+                showToast(`Gagal menyalin resi.`, 'error');
+            });
+        }
+
         // Initialize Dates on load
         function initDates() {
             const today = new Date().toISOString().split('T')[0];
@@ -4650,3 +5568,4 @@
     </script>
 </body>
 </html>
+

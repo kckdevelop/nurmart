@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BarangController;
 use App\Http\Controllers\Api\BelanjaController;
+use App\Http\Controllers\Api\CatatanPesananController;
 use App\Http\Controllers\Api\KategoriController;
 use App\Http\Controllers\Api\LaporanController;
 use App\Http\Controllers\Api\PengaturanController;
@@ -69,6 +70,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/pesanan/{id}', [PesananController::class, 'show']);
     Route::put('/pesanan/{id}/status', [PesananController::class, 'updateStatus']);
     Route::delete('/pesanan/{id}', [PesananController::class, 'destroy']);
+
+    // Catatan Pesanan Marketplace Belum Datang (Shopee, Tokopedia, dll - Kasir & Pemilik)
+    Route::get('/catatan-pesanan', [CatatanPesananController::class, 'index']);
+    Route::get('/catatan-pesanan/{id}', [CatatanPesananController::class, 'show']);
+    Route::post('/catatan-pesanan', [CatatanPesananController::class, 'store']);
+    Route::put('/catatan-pesanan/{id}', [CatatanPesananController::class, 'update']);
+    Route::delete('/catatan-pesanan/{id}', [CatatanPesananController::class, 'destroy']);
 
     // =========================================================================
     // 4. OWNER ONLY ROUTES (Role: pemilik)
