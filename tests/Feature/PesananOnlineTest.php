@@ -182,4 +182,48 @@ class PesananOnlineTest extends TestCase
         // 3. Pastikan stok kembali bertambah 4 menjadi 10!
         $this->assertEquals(10, $this->barang->fresh()->stok);
     }
+
+    public function test_admin_selesaikan_pesanan_mencatat_rekap_penjualan_pada_tanggal_diselesaikan(): void
+    {
+        // 1. Pesanan dibuat pada tanggal kemarin (H-1)
+        $kemarin = \Carbon\Carbon::yesterday();
+        $this->postJson('/api/public/pesanan', [
+            'nama_pemesan' => 'Budi',
+            'items' => [
+                [
+                    'barang_id' => $this->barang->id,
+                    'jumlah' => 2,
+                ],
+            ],
+        ]);
+
+        $pesanan = Pesanan::first();
+        $this->assertNotNull($pesanan);
+        // Simulasikan pesanan masuk di tanggal kemarin
+        $pesanan->update(['tanggal' => $kemarin, 'created_at' => $kemarin]);
+
+        // 2. Admin klik selesai HARI INI
+        $token = $this->userPemilik->createToken('admin-test')->plainTextToken;
+        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->putJson("/api/pesanan/{$pesanan->id}/status", [
+                'status' => 'selesai',
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('status', true)
+            ->assertJsonPath('data.status', 'selesai');
+
+        // 3. Verifikasi record Penjualan tercatat pada tanggal hari ini (saat klik selesai), bukan tanggal kemarin
+        $pesanan->refresh();
+        $this->assertNotNull($pesanan->penjualan_id);
+        $penjualan = \App\Models\Penjualan::find($pesanan->penjualan_id);
+        $this->assertNotNull($penjualan);
+        $this->assertEquals(\Carbon\Carbon::today()->format('Y-m-d'), \Carbon\Carbon::parse($penjualan->tanggal)->format('Y-m-d'));
+
+        // 4. Verifikasi rekap dasbor hari ini mencatat omset dari pesanan ini
+        $dasborResponse = $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->getJson('/api/laporan/dasbor');
+        $dasborResponse->assertStatus(200);
+        $this->assertEquals((float) $pesanan->total_harga, (float) $dasborResponse->json('data.hari_ini.total_omset'));
+    }
 }

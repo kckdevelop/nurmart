@@ -345,9 +345,11 @@ class PesananController extends Controller
 
                 // 3. JIKA STATUS BERUBAH MENJADI 'selesai'
                 // -> Catat transaksi penjualan resmi (Penjualan & DetailPenjualan) agar otomatis masuk ke perhitungan omset, laba kotor, dan riwayat POS!
+                // Tanggal penjualan dicatat pada saat status pesanan diselesaikan (klik selesai) agar omset masuk ke rekap tanggal penyelesaian.
                 if ($newStatus === 'selesai') {
                     if (!$pesanan->penjualan_id || !Penjualan::find($pesanan->penjualan_id)) {
-                        $todayCode = Carbon::now()->format('Ymd');
+                        $waktuSelesai = Carbon::now();
+                        $todayCode = $waktuSelesai->format('Ymd');
                         $countToday = Penjualan::whereDate('created_at', Carbon::today())->count() + 1;
                         $noNota = 'PJ-' . $todayCode . '-' . str_pad((string)$countToday, 4, '0', STR_PAD_LEFT);
 
@@ -365,7 +367,7 @@ class PesananController extends Controller
 
                         $penjualan = Penjualan::create([
                             'no_nota' => $noNota,
-                            'tanggal' => $pesanan->tanggal ?? Carbon::now(),
+                            'tanggal' => $waktuSelesai,
                             'kasir_id' => $kasirId,
                             'total_belanja' => $pesanan->total_harga,
                             'jumlah_bayar' => $pesanan->total_harga,
