@@ -165,6 +165,7 @@ class TokoKelontongApiTest extends TestCase
                 'data' => [
                     'hari_ini',
                     'bulan_ini',
+                    'pesanan_diproses',
                     'inventaris',
                 ]
             ]);

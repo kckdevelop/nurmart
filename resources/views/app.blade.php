@@ -351,6 +351,7 @@
 
         .metric-card.green::before { background: var(--primary); }
         .metric-card.blue::before { background: #0284c7; }
+        .metric-card.cyan::before { background: #0891b2; }
         .metric-card.amber::before { background: var(--accent); }
         .metric-card.purple::before { background: #8b5cf6; }
         .metric-card.red::before { background: var(--danger); }
@@ -382,6 +383,7 @@
 
         .metric-card.green .metric-icon { background: var(--primary-bg); color: var(--primary); }
         .metric-card.blue .metric-icon { background: #e0f2fe; color: #0284c7; }
+        .metric-card.cyan .metric-icon { background: #ecfeff; color: #0891b2; }
         .metric-card.amber .metric-icon { background: var(--accent-light); color: var(--accent); }
         .metric-card.purple .metric-icon { background: #f3e8ff; color: #8b5cf6; }
         .metric-card.red .metric-icon { background: var(--danger-bg); color: var(--danger); }
@@ -1475,6 +1477,17 @@
                     </div>
                     <div class="metric-icon">
                         <i class="fa-solid fa-chart-line"></i>
+                    </div>
+                </div>
+
+                <div class="metric-card cyan" onclick="switchTab('pesanan'); setTimeout(() => filterPesananStatus('diproses'), 100);" style="cursor: pointer;" title="Klik untuk lihat pesanan yang sedang diproses">
+                    <div class="metric-info">
+                        <h4>Pesanan Diproses</h4>
+                        <div class="value" id="val-pesanan-diproses-uang">Rp 0</div>
+                        <small id="val-pesanan-diproses-count" style="color: var(--text-muted); font-size: 12px;">0 Pesanan berjalan</small>
+                    </div>
+                    <div class="metric-icon">
+                        <i class="fa-solid fa-boxes-packing"></i>
                     </div>
                 </div>
 
@@ -3266,6 +3279,10 @@
                 document.getElementById('val-margin-bulan').innerText = '-';
                 const elModal = document.getElementById('val-modal-barang');
                 if (elModal) elModal.innerText = '-';
+                const elUangDiproses = document.getElementById('val-pesanan-diproses-uang');
+                if (elUangDiproses) elUangDiproses.innerText = '-';
+                const elCountDiproses = document.getElementById('val-pesanan-diproses-count');
+                if (elCountDiproses) elCountDiproses.innerText = '-';
                 return;
             }
 
@@ -3298,6 +3315,11 @@
                     document.getElementById('val-omset-bulan').innerText = formatRupiah(d.bulan_ini.total_omset);
                     document.getElementById('val-transaksi-bulan').innerText = `${d.bulan_ini.total_transaksi} Transaksi`;
                     document.getElementById('val-margin-bulan').innerText = formatRupiah(d.bulan_ini.total_keuntungan_margin);
+
+                    const elUangDiproses = document.getElementById('val-pesanan-diproses-uang');
+                    if (elUangDiproses) elUangDiproses.innerText = formatRupiah(d.pesanan_diproses?.total_uang || 0);
+                    const elCountDiproses = document.getElementById('val-pesanan-diproses-count');
+                    if (elCountDiproses) elCountDiproses.innerText = `${d.pesanan_diproses?.total_pesanan || 0} Pesanan berjalan`;
 
                     const elModal = document.getElementById('val-modal-barang');
                     if (elModal) elModal.innerText = formatRupiah(d.inventaris.total_modal_barang || 0);

@@ -7,6 +7,7 @@ use App\Models\Barang;
 use App\Models\Belanja;
 use App\Models\DetailPenjualan;
 use App\Models\Penjualan;
+use App\Models\Pesanan;
 use App\Traits\ApiResponseTrait;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -55,6 +56,11 @@ class LaporanController extends Controller
 
         $totalProduk = Barang::count();
 
+        // 6. Uang yang Masih dalam Pesanan dengan Status Diproses
+        $pesananDiprosesQuery = Pesanan::where('status', 'diproses');
+        $totalUangDiproses = (float) $pesananDiprosesQuery->sum('total_harga');
+        $totalPesananDiproses = (int) $pesananDiprosesQuery->count();
+
         $data = [
             'hari_ini' => [
                 'tanggal' => $today->format('Y-m-d'),
@@ -66,6 +72,10 @@ class LaporanController extends Controller
                 'total_omset' => $omsetBulanIni,
                 'total_transaksi' => $transaksiBulanIni,
                 'total_keuntungan_margin' => $marginBulanIni,
+            ],
+            'pesanan_diproses' => [
+                'total_uang' => $totalUangDiproses,
+                'total_pesanan' => $totalPesananDiproses,
             ],
             'inventaris' => [
                 'total_produk' => $totalProduk,
